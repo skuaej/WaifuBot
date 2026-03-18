@@ -416,9 +416,9 @@ async def check_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     char = None
     if query.isdigit():
         norm_id = str(int(query))
-        char = await characters_collection.find_one({"id": norm_id})
+        regex = re.compile(f"^0*{norm_id}$")
+        char = await characters_collection.find_one({"id": regex})
     else:
-        # Exact string match for non-numeric
         char = await characters_collection.find_one({"id": query})
         
     if not char:
