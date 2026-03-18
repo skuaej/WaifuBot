@@ -140,8 +140,8 @@ def main():
     application = ApplicationBuilder().token(BOT_TOKEN).post_init(post_init).build()
 
     # Track activity & Block (Group -1 runs first)
-    # Global Handlers (processed first in group 0)
-    application.add_handler(TypeHandler(Update, check_spam_handler))
+    # Global Handlers (processed first in group -1)
+    application.add_handler(TypeHandler(Update, check_spam_handler), group=-1)
     # application.add_handler(TypeHandler(Update, debug_all_updates)) # Disable debug for cleaner logs
 
     # Commands
