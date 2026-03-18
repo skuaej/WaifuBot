@@ -65,21 +65,39 @@ async def check_spam_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
         raise ApplicationHandlerStop()
 
     if spam_status == 1:
-        # ALREADY BLOCKED - Silence all except /profile
-        text = update.message.text if update.message and update.message.text else ""
-        if text.startswith("/profile"):
-            return # Allow /profile
+        # ALREADY BLOCKED
+        # Determine if it's the /profile command (check text or caption)
+        msg = update.effective_message
+        text = msg.text if msg and msg.text else ""
+        caption = msg.caption if msg and msg.caption else ""
+        full_text = text or caption
+        
+        # Check if it's a /profile command
+        is_profile = full_text.strip().startswith("/profile")
+        
+        if is_profile:
+            return # Let the /profile CommandHandler handle it
             
-        # For ALL other commands from blocked users, show remaining time
-        remaining = await get_block_remaining(user_id)
-        if remaining > 0 and text.startswith("/"):
-            try:
-                await update.message.reply_text(
-                    f"🚫 <b>YOU ARE BLOCKED!</b> Get free in: {remaining // 60}m {remaining % 60}s",
-                    parse_mode="HTML"
-                )
-            except: pass
-        raise ApplicationHandlerStop()
+        # For ALL other commands/interactions, block and notify
+        if full_text.startswith("/"):
+            remaining = await get_block_remaining(user_id)
+            if remaining > 0:
+                try:
+                    await update.message.reply_text(
+                        f"🚫 <b>YOU ARE BLOCKED!</b> Get free in: {remaining // 60}m {remaining % 60}s",
+                        parse_mode="HTML"
+                    )
+                except: pass
+            raise ApplicationHandlerStop()
+        
+        # If it's a callback query (button), we might also want to block if not profile-related
+        if update.callback_query:
+            query_data = update.callback_query.data
+            if not query_data.startswith("harem_"): # assuming profile uses harem_ buttons? I should check.
+                # Just alert them
+                remaining = await get_block_remaining(user_id)
+                await update.callback_query.answer(f"🚫 BLOCKED! ({remaining}s remains)", show_alert=True)
+                raise ApplicationHandlerStop()
 
 async def debug_all_updates(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # print(f"DEBUG RAW UPDATE: {update.to_dict()}")
@@ -124,8 +142,9 @@ def main():
     application = ApplicationBuilder().token(BOT_TOKEN).post_init(post_init).build()
 
     # Track activity & Block (Group -1 runs first)
-    application.add_handler(MessageHandler(filters.ALL, check_spam_handler), group=-1)
-    application.add_handler(MessageHandler(filters.ALL, debug_all_updates), group=-1)
+    # Global Handlers (processed first in group 0)
+    application.add_handler(TypeHandler(Update, check_spam_handler))
+    # application.add_handler(TypeHandler(Update, debug_all_updates)) # Disable debug for cleaner logs
 
     # Commands
     application.add_handler(CommandHandler("start", start_cmd))
