@@ -1,4 +1,4 @@
-.env
+# .env is intentionally tracked for deployment
 __pycache__/
 *.pyc
 *.pyo
