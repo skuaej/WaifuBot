@@ -567,20 +567,13 @@ async def stats_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     total_chars = await characters_collection.count_documents({})
     total_users = await users_collection.count_documents({})
-    from bot.database.mongo import groups_collection, settings_collection
+    from bot.database.mongo import groups_collection
     total_groups = await groups_collection.count_documents({})
     
-    global_settings = await settings_collection.find_one({"id": "global"})
-    g_spawn = "ENABLED" if global_settings and global_settings.get("spawn_enabled", True) else "DISABLED"
-    g_threshold = global_settings.get("spawn_threshold", 70) if global_settings else 70
-
     text = "📊 <b>Bot Statistics</b>\n\n"
     text += f"👥 <b>Total Users:</b> {total_users}\n"
     text += f"🏠 <b>Total Groups:</b> {total_groups}\n"
     text += f"🏷️ <b>Total Characters:</b> {total_chars}\n\n"
-    
-    text += f"🚀 <b>Global Spawn:</b> {g_spawn}\n"
-    text += f"⏱️ <b>Global Threshold:</b> {g_threshold} messages\n\n"
     
     text += "✨ <b>Rarity Breakdown:</b>\n"
     # Sort by my defined rarity order if possible, or just alphabetically
@@ -719,32 +712,3 @@ async def spwanglobal_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await send_log(context, f"⚙️ <b>Global Spawn Toggle</b>\nBy: {update.effective_user.first_name}\nSpawning: {status}")
 
 
-async def setspawn_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """/setspawn <number> - Set global spawn message threshold (owner only)."""
-    if not await check_owner(update):
-        return
-
-    if not context.args:
-        await update.message.reply_text("Usage: /setspawn <number>")
-        return
-
-    try:
-        threshold = int(context.args[0])
-        if threshold < 0:
-            raise ValueError
-    except ValueError:
-        await update.message.reply_text("❌ Please provide a valid non-negative integer (0 to use group-specific rates).")
-        return
-
-    from bot.database.mongo import settings_collection, groups_collection
-    await settings_collection.update_one(
-        {"id": "global"},
-        {"$set": {"spawn_threshold": threshold}},
-        upsert=True
-    )
-    
-    # Optional: Update all existing groups too if you want it to be immediate for everyone
-    # await groups_collection.update_many({}, {"$set": {"spawn_target": threshold}})
-
-    await update.message.reply_text(f"🚀 Global spawn threshold set to <b>{threshold}</b> messages.", parse_mode="HTML")
-    await send_log(context, f"⚙️ <b>Global Spawn Threshold</b>\nBy: {update.effective_user.first_name}\nTarget: {threshold} messages")

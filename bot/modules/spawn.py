@@ -97,7 +97,7 @@ async def group_message_handler(update: Update, context: ContextTypes.DEFAULT_TY
     # Upsert group stats manually to avoid unsupported return_document=True error
     await groups_collection.update_one(
         {"id": chat_id},
-        {"$inc": {"message_count": 1}, "$setOnInsert": {"spawn_target": 70}},
+        {"$inc": {"message_count": 1}, "$setOnInsert": {"spawn_target": 75}},
         upsert=True
     )
     
@@ -108,20 +108,10 @@ async def group_message_handler(update: Update, context: ContextTypes.DEFAULT_TY
 
     count = group.get("message_count", 0)
     
-    # Priority: Group Specific -> Global (if > 0) -> Default (70)
-    target = group.get("spawn_target")
-    if target:
-        source = "GROUP"
-    else:
-        global_threshold = global_settings.get("spawn_threshold", 0) if global_settings else 0
-        if global_threshold > 0:
-            target = global_threshold
-            source = "GLOBAL"
-        else:
-            target = 70
-            source = "DEFAULT"
+    # Simple logic: Group Specific -> Default (75)
+    target = group.get("spawn_target", 75)
     
-    print(f"DEBUG [SPAWN]: Chat {chat_id} | Count: {count} | Target: {target} ({source})")
+    print(f"DEBUG [SPAWN]: Chat {chat_id} | Count: {count} | Target: {target}")
 
     if count >= target:
         print(f"Threshold reached in {chat_id}! Spawning character.")
