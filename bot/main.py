@@ -60,20 +60,23 @@ async def check_spam_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
         if msg:
             text = (msg.text or msg.caption or "").strip()
             
-        # Only block if it's a command (starts with /) and NOT /profile
+        # 1. Only block if it's a command (starts with /) and NOT /profile
         if text.startswith("/"):
             if not text.startswith("/profile"):
                 logging.info(f"🚫 BLOCKED COMMAND: User {user_id} tried '{text[:20]}...'")
                 raise ApplicationHandlerStop()
-            return # Allow /profile
+            return # Let /profile through
             
-        # If it's a callback query (button), check if it's profile-related
+        # 2. Block buttons if they aren't profile-related
         if update.callback_query:
             query_data = update.callback_query.data
-            # Allow harem/profile buttons, block others
-            if not query_data.startswith(("harem_", "stats_", "back_", "close_")):
+            # List of allowed profile/stats-related button prefixes
+            allowed_prefixes = ("harem_", "stats_", "back_", "close_", "prof_")
+            if not query_data.startswith(allowed_prefixes):
                 logging.info(f"🚫 BLOCKED BUTTON: User {user_id} pressed '{query_data}'")
-                await update.callback_query.answer("🚫 BLOCKED! (Too many messages)", show_alert=True)
+                try:
+                    await update.callback_query.answer("🚫 BLOCKED! (Slow down)", show_alert=True)
+                except: pass
                 raise ApplicationHandlerStop()
 
 async def debug_all_updates(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -119,8 +122,8 @@ def main():
     application = ApplicationBuilder().token(BOT_TOKEN).post_init(post_init).build()
 
     # Track activity & Block (Group -1 runs first)
-    # Global Handlers (DISABLED FOR DIAGNOSIS)
-    # application.add_handler(TypeHandler(Update, check_spam_handler))
+    # Global Handlers (processed first in group 0)
+    application.add_handler(TypeHandler(Update, check_spam_handler))
     # application.add_handler(TypeHandler(Update, debug_all_updates)) # Disable debug for cleaner logs
 
     # Commands
