@@ -230,7 +230,7 @@ async def profile_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
             r = c.get('rarity', 'Common')
             if r in rarities:
                 # Count occurrences based on the user's waifus list
-                cid = c['id']
+                cid = str(c['id'])
                 rarities[r] += norm_waifus.count(cid)
     
     # Local Rank (captures in this chat)

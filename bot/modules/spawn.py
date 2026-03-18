@@ -121,3 +121,5 @@ async def group_message_handler(update: Update, context: ContextTypes.DEFAULT_TY
         await groups_collection.update_one({"id": chat_id}, {"$set": {"message_count": 0}})
         # Spawn
         await spawn_character(update, context)
+    else:
+        print(f"Threshold not reached in {chat_id}: {count}/{target}")

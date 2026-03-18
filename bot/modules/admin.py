@@ -37,7 +37,7 @@ async def get_next_char_id():
     count = await characters_collection.count_documents({})
     max_id = max(max_id, count)
     
-    return f"{max_id + 1:04d}"
+    return str(max_id + 1)
 
 async def send_log(context: ContextTypes.DEFAULT_TYPE, text: str, file_id: str = None, file_type: str = "photo"):
     """Send a log message (with optional media) to the log chat."""

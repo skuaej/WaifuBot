@@ -43,4 +43,9 @@ async def get_random_character():
     async for doc in cursor:
         return doc
         
+    # Final fallback: Pick ANY character if the chosen rarity has no characters (shouldn't happen with distinct() check but for safety)
+    fallback_cursor = characters_collection.aggregate([{"$sample": {"size": 1}}])
+    async for doc in fallback_cursor:
+        return doc
+
     return None
