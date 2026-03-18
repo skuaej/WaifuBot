@@ -97,7 +97,7 @@ async def group_message_handler(update: Update, context: ContextTypes.DEFAULT_TY
     # Upsert group stats manually to avoid unsupported return_document=True error
     await groups_collection.update_one(
         {"id": chat_id},
-        {"$inc": {"message_count": 1}, "$setOnInsert": {"spawn_target": 100}},
+        {"$inc": {"message_count": 1}, "$setOnInsert": {"spawn_target": 70}},
         upsert=True
     )
     
@@ -108,12 +108,12 @@ async def group_message_handler(update: Update, context: ContextTypes.DEFAULT_TY
 
     count = group.get("message_count", 0)
     
-    # Priority: Global (if > 0) -> Group Specific -> Default (100)
+    # Priority: Global (if > 0) -> Group Specific -> Default (70)
     global_threshold = global_settings.get("spawn_threshold", 0) if global_settings else 0
     if global_threshold > 0:
         target = global_threshold
     else:
-        target = group.get("spawn_target", 100)
+        target = group.get("spawn_target", 70)
     
     print(f"Chat {chat_id} count: {count} / target: {target}")
 
