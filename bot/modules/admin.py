@@ -257,24 +257,6 @@ async def forward_save_handler(update: Update, context: ContextTypes.DEFAULT_TYP
 
     final_rarity = RARITY_MAP.get(rarity, rarity)
 
-    # Check if character already exists — update image if so
-    existing = await characters_collection.find_one({
-        "name": {"$regex": f"^{re.escape(name)}$", "$options": "i"},
-        "anime": {"$regex": f"^{re.escape(anime)}$", "$options": "i"}
-    })
-
-    if existing:
-        await characters_collection.update_one(
-            {"_id": existing["_id"]},
-            {"$set": {"file_id": file_id, "file_type": file_type}}
-        )
-        await message.reply_text(
-            f"🔄 Updated image for:\n"
-            f"<b>{name}</b> (ID: {existing['id']})",
-            parse_mode="HTML"
-        )
-        return
-
     # Generate next ID
     max_id = 0
     async for c in characters_collection.find().sort("_id", -1).limit(50):
@@ -284,6 +266,15 @@ async def forward_save_handler(update: Update, context: ContextTypes.DEFAULT_TYP
     count = await characters_collection.count_documents({})
     max_id = max(max_id, count)
     char_id = f"{max_id + 1:04d}"
+
+    # Check for existing (just for notification, not blocking)
+    existing = await characters_collection.find_one({
+        "name": {"$regex": f"^{re.escape(name)}$", "$options": "i"},
+        "anime": {"$regex": f"^{re.escape(anime)}$", "$options": "i"}
+    })
+    
+    if existing:
+         print(f"DEBUG: Found duplicate {name}, but inserting with new ID {char_id}")
 
     character = {
         "id": char_id,
@@ -297,11 +288,11 @@ async def forward_save_handler(update: Update, context: ContextTypes.DEFAULT_TYP
     await characters_collection.insert_one(character)
     await message.reply_text(
         f"✅ Auto-Saved new character:\n"
-        f"<b>{name}</b> (ID: {char_id})\n"
-        f"Anime: {anime}\nRarity: {final_rarity}",
+        f"<b>{escape_markdown(name)}</b> (ID: {char_id})\n"
+        f"Anime: {escape_markdown(anime)}\nRarity: {final_rarity}",
         parse_mode="HTML"
     )
-    await send_log(context, f"🆕 <b>Auto-Saved Character</b>\nName: {name}\nArtist/Anime: {anime}\nRarity: {final_rarity}\nID: {char_id}\nTarget: Owner (Auto-Save)")
+    await send_log(context, f"🆕 <b>Auto-Saved Character</b>\nName: {escape_markdown(name)}\nArtist/Anime: {escape_markdown(anime)}\nRarity: {final_rarity}\nID: {char_id}\nTarget: Owner (Auto-Save)")
 
 async def channel_post_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
@@ -355,20 +346,6 @@ async def channel_post_handler(update: Update, context: ContextTypes.DEFAULT_TYP
 
         final_rarity = RARITY_MAP.get(rarity, rarity)
 
-        # Check if exists to update instead of insert duplicates from channel
-        existing = await characters_collection.find_one({
-            "name": {"$regex": f"^{re.escape(name)}$", "$options": "i"},
-            "anime": {"$regex": f"^{re.escape(anime)}$", "$options": "i"}
-        })
-
-        if existing:
-            await characters_collection.update_one(
-                {"_id": existing["_id"]},
-                {"$set": {"file_id": file_id, "file_type": file_type, "rarity": final_rarity}}
-            )
-            await send_log(context, f"🔄 <b>Auto-Updated Character</b>\nName: {name}\nArtist/Anime: {anime}\nRarity: {final_rarity}\nID: {existing['id']} (from Channel)")
-            return
-
         char_id = await get_next_char_id()
 
         character = {
@@ -381,7 +358,7 @@ async def channel_post_handler(update: Update, context: ContextTypes.DEFAULT_TYP
         }
 
         await characters_collection.insert_one(character)
-        await send_log(context, f"🆕 <b>Auto-Saved Character</b>\nName: {name}\nArtist/Anime: {anime}\nRarity: {final_rarity}\nID: {char_id} (from Channel)")
+        await send_log(context, f"🆕 <b>Auto-Saved Character</b>\nName: {escape_markdown(name)}\nArtist/Anime: {escape_markdown(anime)}\nRarity: {final_rarity}\nID: {char_id} (from Channel)")
     else:
         # Optional: log parsing failure
         pass
@@ -447,20 +424,6 @@ async def upload_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     final_rarity = RARITY_MAP.get(rarity, rarity.capitalize())
 
-    # Check if exists to update instead of insert
-    existing = await characters_collection.find_one({
-        "name": {"$regex": f"^{re.escape(name)}$", "$options": "i"},
-        "anime": {"$regex": f"^{re.escape(anime)}$", "$options": "i"}
-    })
-
-    if existing:
-        await characters_collection.update_one(
-            {"_id": existing["_id"]},
-            {"$set": {"file_id": file_id, "file_type": file_type, "rarity": final_rarity}}
-        )
-        await message.reply_text(f"🔄 Successfully updated: {name} (ID: {existing['id']})\nRarity: {final_rarity}")
-        return
-
     char_id = await get_next_char_id()
 
     character = {
@@ -473,8 +436,8 @@ async def upload_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     }
 
     await characters_collection.insert_one(character)
-    await message.reply_text(f"✅ Successfully uploaded: {name} (ID: {char_id})\nAnime: {anime}\nRarity: {final_rarity}")
-    await send_log(context, f"📤 <b>Character Uploaded</b>\nBy: {update.effective_user.first_name} (<code>{update.effective_user.id}</code>)\nName: {name}\nAnime: {anime}\nRarity: {final_rarity}\nID: {char_id}")
+    await message.reply_text(f"✅ Successfully uploaded: {escape_markdown(name)} (ID: {char_id})\nAnime: {escape_markdown(anime)}\nRarity: {final_rarity}", parse_mode="HTML")
+    await send_log(context, f"📤 <b>Character Uploaded</b>\nBy: {update.effective_user.first_name} (<code>{update.effective_user.id}</code>)\nName: {escape_markdown(name)}\nAnime: {escape_markdown(anime)}\nRarity: {final_rarity}\nID: {char_id}")
 
 async def delete_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """/delete ID1, ID2, ... or range like 1-100"""

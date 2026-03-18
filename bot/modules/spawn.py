@@ -20,7 +20,7 @@ async def despawn_timer(chat_id: int, context: ContextTypes.DEFAULT_TYPE):
             try:
                 await context.bot.send_message(
                     chat_id=chat_id,
-                    text=f"⌛ <b>{char['name']}</b> has vanished! Be faster next time!",
+                    text=f"⌛ <b>{escape_markdown(char['name'])}</b> has vanished! Be faster next time!",
                     parse_mode="HTML"
                 )
             except Exception:
