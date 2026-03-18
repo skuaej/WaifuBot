@@ -123,7 +123,7 @@ def main():
     application.add_handler(CommandHandler("enable", enable_cmd))
     
     # Capture System
-    application.add_handler(CommandHandler(["grab", "guess", "catch"], capture_cmd))
+    application.add_handler(CommandHandler(["grab", "guess", "catch", "hug"], capture_cmd))
     
     # Collection System
     application.add_handler(CommandHandler("harem", harem_cmd))

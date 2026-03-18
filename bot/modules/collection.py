@@ -198,6 +198,7 @@ async def hmode_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton("🦕 Reset Preference", callback_data="hmode_Default")],
         [InlineKeyboardButton("🤍 RARITY: Supreme", callback_data="hmode_Supreme")],
         [InlineKeyboardButton("✨ RARITY: Cataphract", callback_data="hmode_Cataphract")],
+        [InlineKeyboardButton("🪞 RARITY: Supreme", callback_data="hmode_Supreme")],
         [InlineKeyboardButton("⚡ RARITY: Crossverse", callback_data="hmode_Crossverse")],
         [InlineKeyboardButton("⚜️ RARITY: Divine", callback_data="hmode_Divine")],
         [InlineKeyboardButton("💮 RARITY: Mystical", callback_data="hmode_Mystical")],
