@@ -21,20 +21,38 @@ def clean_character_name(name: str) -> str:
     return name.strip()
 
 async def get_next_char_id():
-    """Find the absolute maximum ID to ensure uniqueness."""
-    cursor = characters_collection.find().sort("id", -1)
+    """Find the absolute maximum numeric ID to ensure uniqueness."""
+    # Fetch characters with numeric IDs
+    cursor = characters_collection.find({"id": {"$regex": "^[0-9]+$"}})
     max_id = 0
     async for char in cursor:
-        cid = char.get("id")
-        if cid and cid.isdigit():
-            max_id = max(max_id, int(cid))
-            break # Sorted, so first one is max
-    return str(max_id + 1)
+        try:
+            cid = int(char["id"])
+            if cid > max_id:
+                max_id = cid
+        except (ValueError, KeyError):
+            continue
+    
+    # Also check total count as a safety measure
+    count = await characters_collection.count_documents({})
+    max_id = max(max_id, count)
+    
+    return f"{max_id + 1:04d}"
 
-async def send_log(context: ContextTypes.DEFAULT_TYPE, text: str):
-    """Send a log message to the log chat."""
+async def send_log(context: ContextTypes.DEFAULT_TYPE, text: str, file_id: str = None, file_type: str = "photo"):
+    """Send a log message (with optional media) to the log chat."""
+    if not LOG_CHAT_ID:
+        return
     try:
-        await context.bot.send_message(chat_id=LOG_CHAT_ID, text=text, parse_mode="HTML")
+        if file_id:
+            if file_type == "video":
+                await context.bot.send_video(chat_id=LOG_CHAT_ID, video=file_id, caption=text, parse_mode="HTML")
+            elif file_type == "document":
+                await context.bot.send_document(chat_id=LOG_CHAT_ID, document=file_id, caption=text, parse_mode="HTML")
+            else:
+                await context.bot.send_photo(chat_id=LOG_CHAT_ID, photo=file_id, caption=text, parse_mode="HTML")
+        else:
+            await context.bot.send_message(chat_id=LOG_CHAT_ID, text=text, parse_mode="HTML")
     except Exception as e:
         print(f"Error sending log: {e}")
 
@@ -258,23 +276,10 @@ async def forward_save_handler(update: Update, context: ContextTypes.DEFAULT_TYP
     final_rarity = RARITY_MAP.get(rarity, rarity)
 
     # Generate next ID
-    max_id = 0
-    async for c in characters_collection.find().sort("_id", -1).limit(50):
-        cid = c.get("id")
-        if cid and cid.isdigit():
-            max_id = max(max_id, int(cid))
-    count = await characters_collection.count_documents({})
-    max_id = max(max_id, count)
-    char_id = f"{max_id + 1:04d}"
+    char_id = await get_next_char_id()
 
-    # Check for existing (just for notification, not blocking)
-    existing = await characters_collection.find_one({
-        "name": {"$regex": f"^{re.escape(name)}$", "$options": "i"},
-        "anime": {"$regex": f"^{re.escape(anime)}$", "$options": "i"}
-    })
-    
-    if existing:
-         print(f"DEBUG: Found duplicate {name}, but inserting with new ID {char_id}")
+    # Always insert duplicates with new ID as requested
+    print(f"DEBUG: Adding character {name} with new ID {char_id}")
 
     character = {
         "id": char_id,
@@ -292,7 +297,7 @@ async def forward_save_handler(update: Update, context: ContextTypes.DEFAULT_TYP
         f"Anime: {escape_markdown(anime)}\nRarity: {final_rarity}",
         parse_mode="HTML"
     )
-    await send_log(context, f"🆕 <b>Auto-Saved Character</b>\nName: {escape_markdown(name)}\nArtist/Anime: {escape_markdown(anime)}\nRarity: {final_rarity}\nID: {char_id}\nTarget: Owner (Auto-Save)")
+    await send_log(context, f"🆕 <b>Auto-Saved Character</b>\nName: {escape_markdown(name)}\nArtist/Anime: {escape_markdown(anime)}\nRarity: {final_rarity}\nID: {char_id}\nTarget: Owner (Auto-Save)", file_id=file_id, file_type=file_type)
 
 async def channel_post_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
@@ -358,7 +363,12 @@ async def channel_post_handler(update: Update, context: ContextTypes.DEFAULT_TYP
         }
 
         await characters_collection.insert_one(character)
-        await send_log(context, f"🆕 <b>Auto-Saved Character</b>\nName: {escape_markdown(name)}\nArtist/Anime: {escape_markdown(anime)}\nRarity: {final_rarity}\nID: {char_id} (from Channel)")
+        await send_log(
+            context, 
+            f"🆕 <b>Auto-Saved Character</b>\nName: {escape_markdown(name)}\nArtist/Anime: {escape_markdown(anime)}\nRarity: {final_rarity}\nID: {char_id} (from Channel)",
+            file_id=file_id,
+            file_type=file_type
+        )
     else:
         # Optional: log parsing failure
         pass
@@ -437,7 +447,12 @@ async def upload_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await characters_collection.insert_one(character)
     await message.reply_text(f"✅ Successfully uploaded: {escape_markdown(name)} (ID: {char_id})\nAnime: {escape_markdown(anime)}\nRarity: {final_rarity}", parse_mode="HTML")
-    await send_log(context, f"📤 <b>Character Uploaded</b>\nBy: {update.effective_user.first_name} (<code>{update.effective_user.id}</code>)\nName: {escape_markdown(name)}\nAnime: {escape_markdown(anime)}\nRarity: {final_rarity}\nID: {char_id}")
+    await send_log(
+        context, 
+        f"📤 <b>Character Uploaded</b>\nBy: {update.effective_user.first_name} (<code>{update.effective_user.id}</code>)\nName: {escape_markdown(name)}\nAnime: {escape_markdown(anime)}\nRarity: {final_rarity}\nID: {char_id}",
+        file_id=file_id,
+        file_type=file_type
+    )
 
 async def delete_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """/delete ID1, ID2, ... or range like 1-100"""
