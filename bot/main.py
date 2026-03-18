@@ -44,10 +44,10 @@ logging.basicConfig(
 
 async def check_spam_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """High priority handler to block spammers (Allows /profile ONLY)."""
-    if not update.effective_user:
+    user = update.effective_user
+    if not user:
         return
-        
-    user_id = update.effective_user.id
+    user_id = user.id
     from bot.utils.spam import get_block_remaining, is_spammer
     
     # 1. Update activity window and check status
@@ -61,6 +61,7 @@ async def check_spam_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
             text = (msg.text or msg.caption or "").strip()
             
         if not text.startswith("/profile"):
+            logging.info(f"🚫 BLOCKED: User {user_id} tried '{text[:20]}...'")
             # Silent block: just stop processing the update
             raise ApplicationHandlerStop()
 
