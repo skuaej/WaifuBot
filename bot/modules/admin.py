@@ -730,10 +730,10 @@ async def setspawn_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     try:
         threshold = int(context.args[0])
-        if threshold < 1:
+        if threshold < 0:
             raise ValueError
     except ValueError:
-        await update.message.reply_text("❌ Please provide a valid positive integer.")
+        await update.message.reply_text("❌ Please provide a valid non-negative integer (0 to use group-specific rates).")
         return
 
     from bot.database.mongo import settings_collection, groups_collection
