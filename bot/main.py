@@ -60,10 +60,21 @@ async def check_spam_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
         if msg:
             text = (msg.text or msg.caption or "").strip()
             
-        if not text.startswith("/profile"):
-            logging.info(f"🚫 BLOCKED: User {user_id} tried '{text[:20]}...'")
-            # Silent block: just stop processing the update
-            raise ApplicationHandlerStop()
+        # Only block if it's a command (starts with /) and NOT /profile
+        if text.startswith("/"):
+            if not text.startswith("/profile"):
+                logging.info(f"🚫 BLOCKED COMMAND: User {user_id} tried '{text[:20]}...'")
+                raise ApplicationHandlerStop()
+            return # Allow /profile
+            
+        # If it's a callback query (button), check if it's profile-related
+        if update.callback_query:
+            query_data = update.callback_query.data
+            # Allow harem/profile buttons, block others
+            if not query_data.startswith(("harem_", "stats_", "back_", "close_")):
+                logging.info(f"🚫 BLOCKED BUTTON: User {user_id} pressed '{query_data}'")
+                await update.callback_query.answer("🚫 BLOCKED! (Too many messages)", show_alert=True)
+                raise ApplicationHandlerStop()
 
 async def debug_all_updates(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # print(f"DEBUG RAW UPDATE: {update.to_dict()}")
