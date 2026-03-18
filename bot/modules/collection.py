@@ -196,7 +196,6 @@ async def hmode_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
         [InlineKeyboardButton("🐉 Default", callback_data="hmode_Default"), InlineKeyboardButton("Detailed 🦖", callback_data="hmode_Detailed")],
         [InlineKeyboardButton("🦕 Reset Preference", callback_data="hmode_Default")],
-        [InlineKeyboardButton("🤍 RARITY: Supreme", callback_data="hmode_Supreme")],
         [InlineKeyboardButton("✨ RARITY: Cataphract", callback_data="hmode_Cataphract")],
         [InlineKeyboardButton("🪞 RARITY: Supreme", callback_data="hmode_Supreme")],
         [InlineKeyboardButton("⚡ RARITY: Crossverse", callback_data="hmode_Crossverse")],
@@ -288,9 +287,9 @@ async def profile_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"├─➩ 🟡 𝙍𝘼𝙍𝙄𝙏𝙔: Legendary: {rarities['Legendary']}\n"
         f"├─➩ 💮 𝙍𝘼𝙍𝙄𝙏𝙔: Mystical: {rarities['Mystical']}\n"
         f"├─➩ ⚜️ 𝙍𝘼𝙍𝙄ᴛʏ: Divine: {rarities['Divine']}\n"
-        f"├─➩ 💮 𝙍𝘼𝙍𝙄𝙏𝙔: Crossverse: {rarities['Crossverse']}\n"
-        f"├─➩ 💮 𝙍𝘼𝙍𝙄𝙏𝙔: Supreme: {rarities['Supreme']}\n"
-        f"├─➩ 💮 𝙍𝘼𝙍𝙄𝙏ʏ: Cataphract: {rarities['Cataphract']}\n"
+        f"├─➩ ⚡ 𝙍𝘼𝙍𝙄𝙏𝙔: Crossverse: {rarities['Crossverse']}\n"
+        f"├─➩ 🪞 𝙍𝘼𝙍𝙄𝙏𝙔: Supreme: {rarities['Supreme']}\n"
+        f"├─➩ ✨ 𝙍𝘼𝙍𝙄ᴛʏ: Cataphract: {rarities['Cataphract']}\n"
         "╭───────────────────\n"
         f"├─➩ 🏆 Gʟᴏʙᴀʟ Rᴀɴᴋ: {global_rank if global_rank > 0 else 'N/A'}\n"
         f"├─➩ 📍 Cʜᴀᴛ Rᴀɴᴋ: {local_rank if local_rank > 0 else 'N/A'}\n"
