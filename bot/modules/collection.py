@@ -1,7 +1,7 @@
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 from bot.database.mongo import users_collection, characters_collection, captures_collection
-from bot.config import SUPPORT_CHAT_ID
+from bot.config import SUPPORT_CHAT_ID, SUPPORT_CHAT_LINK
 from bot.utils.formatters import escape_markdown
 import re
 import random
@@ -517,29 +517,15 @@ async def hclaim_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Support Chat Join Check
     if SUPPORT_CHAT_ID:
-        try:
-            member = await context.bot.get_chat_member(SUPPORT_CHAT_ID, user.id)
-            if member.status in ["left", "kicked"]:
-                # Get chat info for link if possible, or just use a generic prompt
-                # Let's try to get a link. If not, just tell them to join the support group.
-                chat = await context.bot.get_chat(SUPPORT_CHAT_ID)
-                invite_link = chat.invite_link or f"https://t.me/c/{str(SUPPORT_CHAT_ID)[4:]}"
-                # If it's a public group with a username, we can use that
-                if chat.username:
-                    invite_link = f"https://t.me/{chat.username}"
-                
-                await update.message.reply_text(
-                    f"❌ <b>You must join our Support Group to use this command!</b>\n\n"
-                    f"👉 <a href='{invite_link}'>CLICK HERE TO JOIN</a>\n"
-                    f"Once joined, you can use /hclaim again.",
-                    parse_mode="HTML"
-                )
-                return
-        except Exception as e:
-            # If bot is not in the group or can't check, we might want to skip or log
-            print(f"Error checking chat member: {e}")
-            # Optional: Allow claim if check fails due to bot configuration issues
-            # pass 
+        member = await context.bot.get_chat_member(SUPPORT_CHAT_ID, user.id)
+        if member.status in ["left", "kicked"]:
+            await update.message.reply_text(
+                f"❌ <b>You must join our Support Group to use this command!</b>\n\n"
+                f"👉 <a href='{SUPPORT_CHAT_LINK}'>CLICK HERE TO JOIN</a>\n"
+                f"Once joined, you can use /hclaim again.",
+                parse_mode="HTML"
+            )
+            return
 
     user_data = await users_collection.find_one({"id": user.id})
     if user_data:
