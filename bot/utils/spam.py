@@ -7,7 +7,7 @@ user_activity = {}
 # spam configuration
 MSG_LIMIT = 5  # messages
 TIME_WINDOW = 10  # seconds
-BLOCK_DURATION = 1800  # 30 minutes (1800s)
+BLOCK_DURATION = 300  # 5 minutes (300s)
 
 async def get_block_remaining(user_id: int) -> int:
     """Return remaining block time in seconds, or 0 if not blocked."""
