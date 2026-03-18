@@ -355,6 +355,20 @@ async def channel_post_handler(update: Update, context: ContextTypes.DEFAULT_TYP
 
         final_rarity = RARITY_MAP.get(rarity, rarity)
 
+        # Check if exists to update instead of insert duplicates from channel
+        existing = await characters_collection.find_one({
+            "name": {"$regex": f"^{re.escape(name)}$", "$options": "i"},
+            "anime": {"$regex": f"^{re.escape(anime)}$", "$options": "i"}
+        })
+
+        if existing:
+            await characters_collection.update_one(
+                {"_id": existing["_id"]},
+                {"$set": {"file_id": file_id, "file_type": file_type, "rarity": final_rarity}}
+            )
+            await send_log(context, f"🔄 <b>Auto-Updated Character</b>\nName: {name}\nArtist/Anime: {anime}\nRarity: {final_rarity}\nID: {existing['id']} (from Channel)")
+            return
+
         char_id = await get_next_char_id()
 
         character = {
@@ -367,7 +381,7 @@ async def channel_post_handler(update: Update, context: ContextTypes.DEFAULT_TYP
         }
 
         await characters_collection.insert_one(character)
-        await send_log(context, f"🆕 <b>Auto-Saved Character</b>\nName: {name}\nArtist/Anime: {anime}\nRarity: {final_rarity}\nID: {char_id}")
+        await send_log(context, f"🆕 <b>Auto-Saved Character</b>\nName: {name}\nArtist/Anime: {anime}\nRarity: {final_rarity}\nID: {char_id} (from Channel)")
     else:
         # Optional: log parsing failure
         pass
