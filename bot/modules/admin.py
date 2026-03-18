@@ -275,6 +275,12 @@ async def forward_save_handler(update: Update, context: ContextTypes.DEFAULT_TYP
 
     final_rarity = RARITY_MAP.get(rarity, rarity)
 
+    # RESTRICTION: Only Cataphract can have video/document
+    if file_type != "photo" and final_rarity != "Cataphract":
+        print(f"[AUTO-SAVE] Rejected - {file_type} is for Cataphract only.")
+        await message.reply_text(f"❌ <b>{file_type.capitalize()}</b> uploads are restricted to <b>Cataphract</b> rarity only.", parse_mode="HTML")
+        return
+
     # Generate next ID
     char_id = await get_next_char_id()
 
@@ -350,6 +356,11 @@ async def channel_post_handler(update: Update, context: ContextTypes.DEFAULT_TYP
                 rarity = "Mystical"
 
         final_rarity = RARITY_MAP.get(rarity, rarity)
+
+        # RESTRICTION: Only Cataphract can have video/document
+        if file_type != "photo" and final_rarity != "Cataphract":
+            print(f"DEBUG: Rejected channel post media {file_type} for rarity {final_rarity}")
+            return # Silently skip channel posts that don't match rules
 
         char_id = await get_next_char_id()
 
@@ -433,6 +444,11 @@ async def upload_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         file_type = "document"
 
     final_rarity = RARITY_MAP.get(rarity, rarity.capitalize())
+
+    # RESTRICTION: Only Cataphract can have video/document
+    if file_type != "photo" and final_rarity != "Cataphract":
+        await message.reply_text(f"❌ <b>{file_type.capitalize()}</b> uploads are restricted to <b>Cataphract</b> rarity only.", parse_mode="HTML")
+        return
 
     char_id = await get_next_char_id()
 
