@@ -493,13 +493,20 @@ async def check_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         text += "<i>Nobody has caught this character yet.</i>"
         
-    file_type = char.get('file_type', 'photo')
-    if file_type == 'video':
-        await update.message.reply_video(video=char['file_id'], caption=text, parse_mode="HTML")
-    elif file_type == 'document':
-        await update.message.reply_document(document=char['file_id'], caption=text, parse_mode="HTML")
-    else:
-        await update.message.reply_photo(photo=char['file_id'], caption=text, parse_mode="HTML")
+    try:
+        file_type = char.get('file_type', 'photo')
+        if file_type == 'video':
+            await update.message.reply_video(video=char['file_id'], caption=text, parse_mode="HTML")
+        elif file_type == 'document':
+            await update.message.reply_document(document=char['file_id'], caption=text, parse_mode="HTML")
+        else:
+            await update.message.reply_photo(photo=char['file_id'], caption=text, parse_mode="HTML")
+    except Exception as e:
+        # Fallback to text-only if file_id is invalid (common after switching bots)
+        await update.message.reply_text(
+            text + "\n\n⚠️ <b>Media Error:</b> The file ID for this character is invalid for the current bot. Please re-upload this character.",
+            parse_mode="HTML"
+        )
 
 
 async def hclaim_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
