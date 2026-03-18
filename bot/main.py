@@ -48,28 +48,37 @@ async def check_spam_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
     user_id = update.effective_user.id
     from bot.utils.spam import get_block_remaining, is_spammer
     
-    # 1. Update activity window
-    is_blocked = await is_spammer(user_id)
+    # 1. Update activity window and check status
+    spam_status = await is_spammer(user_id)
     
-    if is_blocked:
-        # Check if they are trying to use /profile
+    if spam_status == 2:
+        # JUST GOT BLOCKED - Send proactive notification with tag
+        mention = f"<a href='tg://user?id={user_id}'>{escape_markdown(update.effective_user.first_name)}</a>"
+        try:
+            await update.message.reply_text(
+                f"🚫 {mention}, <b>YOU ARE BLOCKED!</b>\n"
+                f"Too many messages. You can only use /profile for the next 5 minutes.",
+                parse_mode="HTML"
+            )
+        except: pass
+        raise ApplicationHandlerStop()
+
+    if spam_status == 1:
+        # ALREADY BLOCKED - Silence all except /profile
         text = update.message.text if update.message and update.message.text else ""
         if text.startswith("/profile"):
             return # Allow /profile
             
-        # For ALL other commands, block and notify
+        # For ALL other commands from blocked users, show remaining time
         remaining = await get_block_remaining(user_id)
-        if remaining > 0:
-            # We only reply if it's a command to avoid message loops
-            if text.startswith("/"):
-                try:
-                    await update.message.reply_text(
-                        f"🚫 <b>SPAM BLOCK!</b> Only /profile is available.\n"
-                        f"<b>Remaining:</b> {remaining // 60}m {remaining % 60}s",
-                        parse_mode="HTML"
-                    )
-                except: pass
-            raise ApplicationHandlerStop()
+        if remaining > 0 and text.startswith("/"):
+            try:
+                await update.message.reply_text(
+                    f"🚫 <b>SPAM BLOCK!</b> Remaining: {remaining // 60}m {remaining % 60}s",
+                    parse_mode="HTML"
+                )
+            except: pass
+        raise ApplicationHandlerStop()
 
 async def debug_all_updates(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # print(f"DEBUG RAW UPDATE: {update.to_dict()}")

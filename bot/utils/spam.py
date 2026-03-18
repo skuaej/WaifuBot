@@ -21,14 +21,17 @@ async def get_block_remaining(user_id: int) -> int:
         return 0
     return remaining
 
-async def is_spammer(user_id: int) -> bool:
-    """Check if a user is currently blocked or should be blocked."""
+async def is_spammer(user_id: int) -> int:
+    """
+    Check if a user is currently blocked or should be blocked.
+    Returns: 0 if not blocked, 1 if already blocked, 2 if just blocked.
+    """
     now = time.time()
     
     # 1. Check if user is currently blocked
     remaining = await get_block_remaining(user_id)
     if remaining > 0:
-        return True
+        return 1
     
     # 2. Check transient activity for new spam
     if user_id not in user_activity:
@@ -49,6 +52,6 @@ async def is_spammer(user_id: int) -> bool:
             {"$set": {"until": until}},
             upsert=True
         )
-        return True
+        return 2
         
-    return False
+    return 0
