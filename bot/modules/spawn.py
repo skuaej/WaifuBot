@@ -4,7 +4,7 @@ from telegram.ext import ContextTypes
 from bot.database.mongo import groups_collection
 from bot.config import SPAWN_DURATION
 from bot.utils.spawning import get_random_character
-from bot.utils.formatters import generate_spawn_message
+from bot.utils.formatters import generate_spawn_message, escape_markdown
 
 # In-memory store for active spawns {chat_id: character_doc}
 active_spawns = {}
@@ -112,10 +112,12 @@ async def group_message_handler(update: Update, context: ContextTypes.DEFAULT_TY
     global_threshold = global_settings.get("spawn_threshold", 0) if global_settings else 0
     if global_threshold > 0:
         target = global_threshold
+        source = "GLOBAL"
     else:
         target = group.get("spawn_target", 70)
+        source = "GROUP"
     
-    print(f"Chat {chat_id} count: {count} / target: {target}")
+    print(f"DEBUG [SPAWN]: Chat {chat_id} | Count: {count} | Target: {target} ({source})")
 
     if count >= target:
         print(f"Threshold reached in {chat_id}! Spawning character.")
