@@ -9,6 +9,10 @@ import math
 
 async def get_harem_page(user_id: int, page: int, target_user_name: str) -> tuple:
     user_data = await users_collection.find_one({"id": user_id})
+    if not user_data:
+        # Try string ID as fallback
+        user_data = await users_collection.find_one({"id": str(user_id)})
+        
     if not user_data or not user_data.get("waifus"):
         return "❌ You haven't caught any waifus yet!", None, None
 

@@ -108,9 +108,11 @@ async def group_message_handler(update: Update, context: ContextTypes.DEFAULT_TY
 
     count = group.get("message_count", 0)
     
-    # Use global threshold if set, otherwise group specific
-    target = global_settings.get("spawn_threshold") if global_settings else None
-    if target is None:
+    # Priority: Global (if > 0) -> Group Specific -> Default (100)
+    global_threshold = global_settings.get("spawn_threshold", 0) if global_settings else 0
+    if global_threshold > 0:
+        target = global_threshold
+    else:
         target = group.get("spawn_target", 100)
     
     print(f"Chat {chat_id} count: {count} / target: {target}")
