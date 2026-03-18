@@ -489,7 +489,7 @@ async def check_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
             uname = escape_markdown(u.get('name', 'Unknown'))
             uid = u.get('id', 'Unknown')
             ucount = u.get('count', 0)
-            text += f"➥ {uname} ({uid}) x{ucount}\n\n"
+            text += f"➥ <a href='tg://user?id={uid}'>{uname}</a> (<code>{uid}</code>) x{ucount}\n\n"
     else:
         text += "<i>Nobody has caught this character yet.</i>"
         
