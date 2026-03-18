@@ -54,30 +54,48 @@ async def check_spam_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
     spam_status = await is_spammer(user_id)
     
     if spam_status > 0:
-        # User is blocked. Check if it's the /profile command to allow it.
+        # User is blocked. Check if it's an allowed command.
         msg = update.effective_message
         text = ""
         if msg:
             text = (msg.text or msg.caption or "").strip()
             
-        # 1. Only block if it's a command (starts with /) and NOT /profile
-        if text.startswith("/"):
-            if not text.startswith("/profile"):
-                logging.info(f"🚫 BLOCKED COMMAND: User {user_id} tried '{text[:20]}...'")
-                raise ApplicationHandlerStop()
-            return # Let /profile through
+        # 1. ALLOW /profile and /start (and their buttons)
+        allowed_cmds = ("/profile", "/start")
+        if text.startswith(allowed_cmds):
+            return # Let them through
             
-        # 2. Block buttons if they aren't profile-related
+        # 2. Block and NOTIFY for other commands
+        if text.startswith("/"):
+            remaining = await get_block_remaining(user_id)
+            if remaining > 0:
+                logging.info(f"🚫 BLOCKED COMMAND (FEEDBACK): User {user_id} tried '{text[:20]}...'")
+                try:
+                    await update.message.reply_text(
+                        f"🚫 <b>YOU ARE BLOCKED!</b> Get free in: {remaining // 60}m {remaining % 60}s\n"
+                        f"Only /profile is available.",
+                        parse_mode="HTML"
+                    )
+                except: pass
+            raise ApplicationHandlerStop()
+            
+        # 3. Block buttons if they aren't profile-related
         if update.callback_query:
             query_data = update.callback_query.data
-            # List of allowed profile/stats-related button prefixes
             allowed_prefixes = ("harem_", "stats_", "back_", "close_", "prof_")
             if not query_data.startswith(allowed_prefixes):
                 logging.info(f"🚫 BLOCKED BUTTON: User {user_id} pressed '{query_data}'")
+                remaining = await get_block_remaining(user_id)
                 try:
-                    await update.callback_query.answer("🚫 BLOCKED! (Slow down)", show_alert=True)
+                    await update.callback_query.answer(
+                        f"🚫 BLOCKED! ({remaining // 60}m {remaining % 60}s remains)", 
+                        show_alert=True
+                    )
                 except: pass
                 raise ApplicationHandlerStop()
+                
+        # 4. SILENT for everything else (regular chat) - allow it to pass
+        # This ensures chat still counts for spawn even if user is 'command-blocked'
 
 async def debug_all_updates(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # print(f"DEBUG RAW UPDATE: {update.to_dict()}")
