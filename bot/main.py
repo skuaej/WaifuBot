@@ -6,6 +6,7 @@ from telegram.ext import (
     MessageHandler,
     InlineQueryHandler,
     CallbackQueryHandler,
+    TypeHandler,
     filters,
     ContextTypes,
     ApplicationHandlerStop
@@ -52,52 +53,16 @@ async def check_spam_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
     # 1. Update activity window and check status
     spam_status = await is_spammer(user_id)
     
-    if spam_status == 2:
-        # JUST GOT BLOCKED - Send proactive notification with tag
-        mention = f"<a href='tg://user?id={user_id}'>{escape_markdown(update.effective_user.first_name)}</a>"
-        try:
-            await update.message.reply_text(
-                f"🚫 {mention}, <b>YOU ARE BLOCKED!</b>\n"
-                f"You will be free in 5 minutes. Only /profile is available.",
-                parse_mode="HTML"
-            )
-        except: pass
-        raise ApplicationHandlerStop()
-
-    if spam_status == 1:
-        # ALREADY BLOCKED
-        # Determine if it's the /profile command (check text or caption)
+    if spam_status > 0:
+        # User is blocked. Check if it's the /profile command to allow it.
         msg = update.effective_message
-        text = msg.text if msg and msg.text else ""
-        caption = msg.caption if msg and msg.caption else ""
-        full_text = text or caption
-        
-        # Check if it's a /profile command
-        is_profile = full_text.strip().startswith("/profile")
-        
-        if is_profile:
-            return # Let the /profile CommandHandler handle it
+        text = ""
+        if msg:
+            text = (msg.text or msg.caption or "").strip()
             
-        # For ALL other commands/interactions, block and notify
-        if full_text.startswith("/"):
-            remaining = await get_block_remaining(user_id)
-            if remaining > 0:
-                try:
-                    await update.message.reply_text(
-                        f"🚫 <b>YOU ARE BLOCKED!</b> Get free in: {remaining // 60}m {remaining % 60}s",
-                        parse_mode="HTML"
-                    )
-                except: pass
+        if not text.startswith("/profile"):
+            # Silent block: just stop processing the update
             raise ApplicationHandlerStop()
-        
-        # If it's a callback query (button), we might also want to block if not profile-related
-        if update.callback_query:
-            query_data = update.callback_query.data
-            if not query_data.startswith("harem_"): # assuming profile uses harem_ buttons? I should check.
-                # Just alert them
-                remaining = await get_block_remaining(user_id)
-                await update.callback_query.answer(f"🚫 BLOCKED! ({remaining}s remains)", show_alert=True)
-                raise ApplicationHandlerStop()
 
 async def debug_all_updates(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # print(f"DEBUG RAW UPDATE: {update.to_dict()}")
