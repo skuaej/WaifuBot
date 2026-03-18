@@ -656,7 +656,9 @@ async def enable_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if not context.args:
         await update.message.reply_text("Usage: /enable <on/off>")
-        returnasync def spwanglobal_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+        return
+
+async def spwanglobal_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """/spwanglobal <on/off> - Toggle spawning globally in all groups (owner only)."""
     if not await check_owner(update):
         return
@@ -715,3 +717,33 @@ async def spwanglobal_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     status = "ENABLED" if enabled else "DISABLED"
     await update.message.reply_text(f"🚀 Global spawning has been {status} across all groups.")
     await send_log(context, f"⚙️ <b>Global Spawn Toggle</b>\nBy: {update.effective_user.first_name}\nSpawning: {status}")
+
+async def setspawn_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """/setspawn <number> - Set global spawn message threshold (owner only)."""
+    if not await check_owner(update):
+        return
+
+    if not context.args:
+        await update.message.reply_text("Usage: /setspawn <number>")
+        return
+
+    try:
+        threshold = int(context.args[0])
+        if threshold < 1:
+            raise ValueError
+    except ValueError:
+        await update.message.reply_text("❌ Please provide a valid positive integer.")
+        return
+
+    from bot.database.mongo import settings_collection, groups_collection
+    await settings_collection.update_one(
+        {"id": "global"},
+        {"$set": {"spawn_threshold": threshold}},
+        upsert=True
+    )
+    
+    # Optional: Update all existing groups too if you want it to be immediate for everyone
+    # await groups_collection.update_many({}, {"$set": {"spawn_target": threshold}})
+
+    await update.message.reply_text(f"🚀 Global spawn threshold set to <b>{threshold}</b> messages.", parse_mode="HTML")
+    await send_log(context, f"⚙️ <b>Global Spawn Threshold</b>\nBy: {update.effective_user.first_name}\nTarget: {threshold} messages")
