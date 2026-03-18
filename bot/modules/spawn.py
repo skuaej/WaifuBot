@@ -97,7 +97,7 @@ async def group_message_handler(update: Update, context: ContextTypes.DEFAULT_TY
     # Upsert group stats manually to avoid unsupported return_document=True error
     await groups_collection.update_one(
         {"id": chat_id},
-        {"$inc": {"message_count": 1}, "$setOnInsert": {"spawn_target": 75}},
+        {"$inc": {"message_count": 1}, "$setOnInsert": {"spawn_target": 70}},
         upsert=True
     )
     
@@ -109,7 +109,7 @@ async def group_message_handler(update: Update, context: ContextTypes.DEFAULT_TY
     count = group.get("message_count", 0)
     
     # Simple logic: Group Specific -> Default (75)
-    target = group.get("spawn_target", 75)
+    target = group.get("spawn_target", 70)
     
     print(f"DEBUG [SPAWN]: Chat {chat_id} | Count: {count} | Target: {target}")
 
