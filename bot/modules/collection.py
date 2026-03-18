@@ -222,10 +222,17 @@ async def profile_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     rarities = {"Cataphract": 0, "Supreme": 0, "Crossverse": 0, "Divine": 0, "Mystical": 0, "Legendary": 0, "Rare": 0, "Uncommon": 0, "Common": 0}
     if waifus:
-        cursor = characters_collection.find({"id": {"$in": waifus}})
+        # Normalize IDs for count
+        norm_waifus = [str(int(wid)) if wid.isdigit() else wid for wid in waifus]
+        cursor = characters_collection.find({"id": {"$in": norm_waifus}})
         async for c in cursor:
             r = c.get('rarity', 'Common')
-             # Calculate Global and Chat Rankings
+            if r in rarities:
+                # Count occurrences based on the user's waifus list
+                cid = c['id']
+                rarities[r] += norm_waifus.count(cid)
+    
+    # Local Rank (captures in this chat)
     from bot.database.mongo import captures_collection
     from bot.utils.spam import get_block_remaining
     chat_id = update.effective_chat.id
@@ -243,11 +250,12 @@ async def profile_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ]
     global_rank = 0
     g_idx = 1
-    async for u in users_collection.aggregate(global_rank_pipeline):
-        if u["_id"] == user_data["_id"]:
-            global_rank = g_idx
-            break
-        g_idx += 1
+    if user_data:
+        async for u in users_collection.aggregate(global_rank_pipeline):
+            if u["_id"] == user_data["_id"]:
+                global_rank = g_idx
+                break
+            g_idx += 1
         
     # Local Rank (captures in this chat)
     local_rank_pipeline = [
@@ -305,9 +313,10 @@ async def top_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     idx = 1
     async for u in user_cursor:
         user_id = u.get('id', 'Unknown')
-        name = f"<a href='tg://user?id={user_id}'>{escape_markdown(u.get('name', 'Unknown'))}</a>"
+        user_name = escape_markdown(u.get('name', 'Unknown'))
+        name_mention = f"<a href='tg://user?id={user_id}'>{user_name}</a>"
         count = u.get('waifu_count', 0)
-        text += f"<b>{idx}.</b> {name} (ID: <code>{user_id}</code>) — {count} waifus\n"
+        text += f"<b>{idx}.</b> {name_mention} (ID: <code>{user_id}</code>) — {count} waifus\n"
         idx += 1
 
     await update.message.reply_text(text, parse_mode="HTML")
@@ -328,9 +337,7 @@ async def gtop_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         char_id = c["_id"]
         char_data = await characters_collection.find_one({"id": char_id})
         if not char_data:
-            # Fallback if ID is padded in characters collection but normalized in captures
-            norm_id = str(int(char_id)) if char_id.isdigit() else char_id
-            char_data = await characters_collection.find_one({"id": norm_id})
+            char_data = await characters_collection.find_one({"id": str(int(char_id)) if char_id.isdigit() else char_id})
             if not char_data: continue
 
         # 2. Find the Top Catcher for this character
@@ -343,23 +350,15 @@ async def gtop_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         user_win_cursor = captures_collection.aggregate(user_win_pipeline)
         top_user_text = "<i>N/A</i>"
         async for uw in user_win_cursor:
-            user_id = uw["_id"]
-            u_data = await users_collection.find_one({"id": user_id})
-            name_val = u_data.get('name', 'Unknown') if u_data else "Unknown"
-            u_name = f"<a href='tg://user?id={user_id}'>{escape_markdown(name_val)}</a>"
-            top_user_text = f"{u_name} (ID: <code>{user_id}</code>) x{uw['count']}"
-            break
-            
-        name = escape_markdown(char_data['name'])
-        total_count = c['count']
-        text += (
-            f"<b>{c_idx}.</b> {name} (ID: {char_id}) — Total: {total_count}\n"
-            f"   └─ 🏆 Top Catcher: {top_user_text}\n"
-        )
+            u_id = uw["_id"]
+            u_data = await users_collection.find_one({"id": u_id})
+            u_name_val = u_data.get('name', 'Unknown') if u_data else "Unknown"
+            u_mention = f"<a href='tg://user?id={u_id}'>{escape_markdown(u_name_val)}</a>"
+            top_user_text = f"{u_mention} (ID: <code>{u_id}</code>) x{uw['count']}"
+        
+        text += f"<b>{c_idx}.</b> {escape_markdown(char_data['name'])} (ID: <code>{char_id}</code>) — {c['count']} grabs\n"
+        text += f"   ﹂ 🏆 Top Catcher: {top_user_text}\n\n"
         c_idx += 1
-    
-    if c_idx == 1:
-        text = "No captures logged yet!"
 
     await update.message.reply_text(text, parse_mode="HTML")
 
