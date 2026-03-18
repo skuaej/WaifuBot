@@ -12,9 +12,9 @@ def generate_spawn_message(name: str, rarity: str) -> str:
         "Legendary": "🟡",
         "Mystical": "💮",
         "Divine": "⚜️",
-        "Crossverse": "💮",
-        "Supreme": "💮",
-        "Cataphract": "💮"
+        "Crossverse": "⚡",
+        "Supreme": "🪞",
+        "Cataphract": "✨"
     }
     emoji = rarity_emojis.get(rarity, "🟡")
     

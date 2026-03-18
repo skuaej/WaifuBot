@@ -656,7 +656,28 @@ async def enable_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if not context.args:
         await update.message.reply_text("Usage: /enable <on/off>")
+        returnasync def spwanglobal_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """/spwanglobal <on/off> - Toggle spawning globally in all groups (owner only)."""
+    if not await check_owner(update):
         return
+
+    if not context.args:
+        await update.message.reply_text("Usage: /spwanglobal <on/off>")
+        return
+
+    val = context.args[0].lower()
+    enabled = val == "on"
+    
+    from bot.database.mongo import settings_collection
+    await settings_collection.update_one(
+        {"id": "global"},
+        {"$set": {"spawn_enabled": enabled}},
+        upsert=True
+    )
+    
+    status = "ENABLED" if enabled else "DISABLED"
+    await update.message.reply_text(f"🚀 Global spawning has been {status} across all groups.")
+    await send_log(context, f"⚙️ <b>Global Spawn Toggle</b>\nBy: {update.effective_user.first_name}\nSpawning: {status}")
 
     val = context.args[0].lower()
     enabled = val == "on"
@@ -671,3 +692,26 @@ async def enable_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     status = "ENABLED" if enabled else "DISABLED"
     await update.message.reply_text(f"✅ Games have been {status} globally.")
     await send_log(context, f"⚙️ <b>Global Toggle</b>\nBy: {update.effective_user.first_name}\nGames: {status}")
+
+async def spwanglobal_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """/spwanglobal <on/off> - Toggle spawning globally in all groups (owner only)."""
+    if not await check_owner(update):
+        return
+
+    if not context.args:
+        await update.message.reply_text("Usage: /spwanglobal <on/off>")
+        return
+
+    val = context.args[0].lower()
+    enabled = val == "on"
+    
+    from bot.database.mongo import settings_collection
+    await settings_collection.update_one(
+        {"id": "global"},
+        {"$set": {"spawn_enabled": enabled}},
+        upsert=True
+    )
+    
+    status = "ENABLED" if enabled else "DISABLED"
+    await update.message.reply_text(f"🚀 Global spawning has been {status} across all groups.")
+    await send_log(context, f"⚙️ <b>Global Spawn Toggle</b>\nBy: {update.effective_user.first_name}\nSpawning: {status}")

@@ -519,11 +519,14 @@ async def hclaim_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if SUPPORT_CHAT_ID:
         member = await context.bot.get_chat_member(SUPPORT_CHAT_ID, user.id)
         if member.status in ["left", "kicked"]:
+            from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+            keyboard = [[InlineKeyboardButton("🚀 JOIN SUPPORT CHAT", url=SUPPORT_CHAT_LINK)]]
+            reply_markup = InlineKeyboardMarkup(keyboard)
             await update.message.reply_text(
                 f"❌ <b>You must join our Support Group to use this command!</b>\n\n"
-                f"👉 <a href='{SUPPORT_CHAT_LINK}'>CLICK HERE TO JOIN</a>\n"
-                f"Once joined, you can use /hclaim again.",
-                parse_mode="HTML"
+                f"👉 Click the button below to join, then try again.",
+                parse_mode="HTML",
+                reply_markup=reply_markup
             )
             return
 
@@ -574,7 +577,7 @@ async def hclaim_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     emoji_map = {
         "Common": "🔵", "Uncommon": "🟣", "Rare": "🟠",
         "Legendary": "🟡", "Mystical": "💮", "Divine": "⚜️",
-        "Crossverse": "⚡", "Supreme": "🤍", "Cataphract": "✨"
+        "Crossverse": "⚡", "Supreme": "🪞", "Cataphract": "✨"
     }
     r_emoji = emoji_map.get(char.get('rarity', 'Common'), '💮')
 

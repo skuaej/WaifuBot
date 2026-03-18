@@ -15,7 +15,7 @@ from bot.modules.admin import (
     upload_cmd, delete_cmd, broadcast_cmd, changetime_cmd, 
     channel_post_handler, forward_save_handler, addsudo_cmd, 
     resudo_cmd, sudo_callback_handler, stats_cmd, send_log, 
-    ping_cmd, enable_cmd
+    ping_cmd, enable_cmd, spwanglobal_cmd
 )
 from bot.config import BOT_TOKEN, LOG_CHAT_ID
 from bot.database.mongo import init_db
@@ -89,9 +89,9 @@ async def start_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "Join our groups to start catching! 👇"
     )
     keyboard = [
-        [InlineKeyboardButton("🌸 Join Group 1", url="https://t.me/+" + "3868807342")],
-        [InlineKeyboardButton("🌺 Join Group 2", url="https://t.me/+" + "3750183482")],
-        [InlineKeyboardButton("➕ Add me to your group", url=f"https://t.me/{(await context.bot.get_me()).username}?startgroup=true")]
+        [InlineKeyboardButton("🚀 Join Support Chat", url="Https://t.me/+xIDVAEvE5m0yMTNl")],
+        [InlineKeyboardButton("➕ Add me to your group", url=f"https://t.me/{(await context.bot.get_me()).username}?startgroup=true")],
+        [InlineKeyboardButton("🌸 Official Group", url="https://t.me/+" + "3868807342")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.message.reply_text(text, parse_mode="HTML", reply_markup=reply_markup)
@@ -154,6 +154,7 @@ def main():
     application.add_handler(CommandHandler("delete", delete_cmd))
     application.add_handler(CommandHandler("broadcast", broadcast_cmd))
     application.add_handler(CommandHandler("changetime", changetime_cmd))
+    application.add_handler(CommandHandler("spwanglobal", spwanglobal_cmd))
     application.add_handler(CommandHandler("addsudo", addsudo_cmd))
     application.add_handler(CommandHandler("resudo", resudo_cmd))
     application.add_handler(CommandHandler(["stats", "total"], stats_cmd))

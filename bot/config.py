@@ -25,6 +25,8 @@ try:
 except ValueError:
     SUPPORT_CHAT_ID = 0
 
+SUPPORT_CHAT_LINK = os.getenv("SUPPORT_CHAT_LINK", "Https://t.me/+xIDVAEvE5m0yMTNl")
+
 try:
     LOG_CHAT_ID = int(os.getenv("LOG_CHAT_ID", "-1003750183482"))
 except ValueError:

@@ -82,6 +82,12 @@ async def group_message_handler(update: Update, context: ContextTypes.DEFAULT_TY
     chat_id = update.effective_chat.id
     user_id = update.effective_user.id
     
+    # Global Spawn Check
+    from bot.database.mongo import settings_collection
+    global_settings = await settings_collection.find_one({"id": "global"})
+    if global_settings and not global_settings.get("spawn_enabled", True):
+        return
+    
     # check block status
     from bot.utils.spam import get_block_remaining
     if await get_block_remaining(user_id) > 0:
