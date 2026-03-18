@@ -1,0 +1,15 @@
+.env
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.db
+.cache
+.vscode/
+.idea/
+venv/
+env/
+*.log
+*.err
+/tmp/
+node_modules/

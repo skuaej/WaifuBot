@@ -1,0 +1,112 @@
+import asyncio
+from telegram import Update
+from telegram.ext import ContextTypes
+from bot.database.mongo import groups_collection
+from bot.config import SPAWN_DURATION
+from bot.utils.spawning import get_random_character
+from bot.utils.formatters import generate_spawn_message
+
+# In-memory store for active spawns {chat_id: character_doc}
+active_spawns = {}
+# In-memory store for despawn tasks to cancel them if captured {chat_id: task}
+despawn_tasks = {}
+
+async def despawn_timer(chat_id: int, context: ContextTypes.DEFAULT_TYPE):
+    """Wait for SPAWN_DURATION, then remove active spawn if not caught."""
+    await asyncio.sleep(SPAWN_DURATION)
+    if chat_id in active_spawns:
+        char = active_spawns.pop(chat_id, None)
+        if char:
+            try:
+                await context.bot.send_message(
+                    chat_id=chat_id,
+                    text=f"⌛ <b>{char['name']}</b> has vanished! Be faster next time!",
+                    parse_mode="HTML"
+                )
+            except Exception:
+                pass
+        
+        if chat_id in despawn_tasks:
+            despawn_tasks.pop(chat_id, None)
+
+async def spawn_character(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Spawns a character in the group."""
+    chat_id = update.effective_chat.id
+    # Allow concurrent spawns if threshold is hit rapidly or changetime is 1
+
+    character = await get_random_character()
+    if not character:
+        return # No characters in DB yet
+
+    # Send spawn message
+    text = generate_spawn_message(character['name'], character['rarity'])
+    file_type = character.get('file_type', 'photo')
+    if file_type == 'video':
+        message = await context.bot.send_video(
+            chat_id=chat_id,
+            video=character['file_id'],
+            caption=text,
+            parse_mode="HTML"
+        )
+    elif file_type == 'document':
+        message = await context.bot.send_document(
+            chat_id=chat_id,
+            document=character['file_id'],
+            caption=text,
+            parse_mode="HTML"
+        )
+    else:
+        message = await context.bot.send_photo(
+            chat_id=chat_id,
+            photo=character['file_id'],
+            caption=text,
+            parse_mode="HTML"
+        )
+
+    # Register active spawn
+    active_spawns[chat_id] = character
+    
+    # Start despawn timer task
+    task = asyncio.create_task(despawn_timer(chat_id, context))
+    despawn_tasks[chat_id] = task
+
+async def group_message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Listens to all group messages, increments counter, drops waifu when threshold hit."""
+    if not update.effective_chat or update.effective_chat.type not in ['group', 'supergroup']:
+        return
+        
+    if not update.message or update.message.text and update.message.text.startswith('/'):
+        # Ignore commands for counting
+        return
+
+    chat_id = update.effective_chat.id
+    user_id = update.effective_user.id
+    
+    # check block status
+    from bot.utils.spam import get_block_remaining
+    if await get_block_remaining(user_id) > 0:
+        print(f"Ignored message from blocked user {user_id} for spawn count.")
+        return
+
+    # Upsert group stats manually to avoid unsupported return_document=True error
+    await groups_collection.update_one(
+        {"id": chat_id},
+        {"$inc": {"message_count": 1}, "$setOnInsert": {"spawn_target": 100}},
+        upsert=True
+    )
+    
+    group = await groups_collection.find_one({"id": chat_id})
+    if not group:
+        print("Failed to find group in DB post-upsert")
+        return
+
+    count = group.get("message_count", 0)
+    target = group.get("spawn_target", 100)
+    print(f"Chat {chat_id} count: {count} / target: {target}")
+
+    if count >= target:
+        print(f"Threshold reached in {chat_id}! Spawning character.")
+        # Reset counter
+        await groups_collection.update_one({"id": chat_id}, {"$set": {"message_count": 0}})
+        # Spawn
+        await spawn_character(update, context)
