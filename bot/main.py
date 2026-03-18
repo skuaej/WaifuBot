@@ -94,8 +94,8 @@ async def check_spam_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
                 except: pass
                 raise ApplicationHandlerStop()
                 
-        # 4. SILENT for everything else (regular chat) - allow it to pass
-        # This ensures chat still counts for spawn even if user is 'command-blocked'
+        # 4. Block everything else (regular chat)
+        raise ApplicationHandlerStop()
 
 async def debug_all_updates(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # print(f"DEBUG RAW UPDATE: {update.to_dict()}")

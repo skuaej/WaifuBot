@@ -5,7 +5,7 @@ from bot.database.mongo import blocks_collection
 user_activity = {}
 
 # spam configuration
-MSG_LIMIT = 5  # messages
+MSG_LIMIT = 4  # messages
 TIME_WINDOW = 1  # seconds
 BLOCK_DURATION = 300  # 5 minutes (300s)
 
