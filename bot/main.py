@@ -17,6 +17,7 @@ from bot.modules.admin import (
     resudo_cmd, sudo_callback_handler, stats_cmd, send_log, 
     ping_cmd, enable_cmd, spwanglobal_cmd
 )
+from bot.utils.formatters import escape_markdown
 from bot.config import BOT_TOKEN, LOG_CHAT_ID
 from bot.database.mongo import init_db
 from bot.modules.spawn import group_message_handler
