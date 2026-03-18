@@ -58,7 +58,7 @@ async def check_spam_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
         try:
             await update.message.reply_text(
                 f"🚫 {mention}, <b>YOU ARE BLOCKED!</b>\n"
-                f"Too many messages. You can only use /profile for the next 5 minutes.",
+                f"You will be free in 5 minutes. Only /profile is available.",
                 parse_mode="HTML"
             )
         except: pass
@@ -75,7 +75,7 @@ async def check_spam_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
         if remaining > 0 and text.startswith("/"):
             try:
                 await update.message.reply_text(
-                    f"🚫 <b>SPAM BLOCK!</b> Remaining: {remaining // 60}m {remaining % 60}s",
+                    f"🚫 <b>YOU ARE BLOCKED!</b> Get free in: {remaining // 60}m {remaining % 60}s",
                     parse_mode="HTML"
                 )
             except: pass
