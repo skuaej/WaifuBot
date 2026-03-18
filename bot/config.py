@@ -21,6 +21,11 @@ except ValueError:
     UPLOAD_CHANNEL_ID = 0
 
 try:
+    SUPPORT_CHAT_ID = int(os.getenv("SUPPORT_CHAT_ID", "0"))
+except ValueError:
+    SUPPORT_CHAT_ID = 0
+
+try:
     LOG_CHAT_ID = int(os.getenv("LOG_CHAT_ID", "-1003750183482"))
 except ValueError:
     LOG_CHAT_ID = -1003750183482
