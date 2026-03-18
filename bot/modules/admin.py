@@ -264,9 +264,13 @@ async def forward_save_handler(update: Update, context: ContextTypes.DEFAULT_TYP
     })
 
     if existing:
+        await characters_collection.update_one(
+            {"_id": existing["_id"]},
+            {"$set": {"file_id": file_id, "file_type": file_type}}
+        )
         await message.reply_text(
-            f"⏭️ Skipped duplicate:\n"
-            f"<b>{name}</b> (ID: {existing['id']}) already exists.",
+            f"🔄 Updated image for:\n"
+            f"<b>{name}</b> (ID: {existing['id']})",
             parse_mode="HTML"
         )
         return
@@ -428,6 +432,20 @@ async def upload_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         file_type = "document"
 
     final_rarity = RARITY_MAP.get(rarity, rarity.capitalize())
+
+    # Check if exists to update instead of insert
+    existing = await characters_collection.find_one({
+        "name": {"$regex": f"^{re.escape(name)}$", "$options": "i"},
+        "anime": {"$regex": f"^{re.escape(anime)}$", "$options": "i"}
+    })
+
+    if existing:
+        await characters_collection.update_one(
+            {"_id": existing["_id"]},
+            {"$set": {"file_id": file_id, "file_type": file_type, "rarity": final_rarity}}
+        )
+        await message.reply_text(f"🔄 Successfully updated: {name} (ID: {existing['id']})\nRarity: {final_rarity}")
+        return
 
     char_id = await get_next_char_id()
 
