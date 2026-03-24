@@ -5,9 +5,9 @@ from bot.database.mongo import blocks_collection
 user_activity = {}
 
 # spam configuration
-MSG_LIMIT = 5  # messages
-TIME_WINDOW = 1  # seconds
-BLOCK_DURATION = 300  # 5 minutes (300s)
+MSG_LIMIT = 5      # 6th message triggers the block
+TIME_WINDOW = 1    # within 1 second
+BLOCK_DURATION = 60 # Block for 60 seconds (1 minute)
 
 async def get_block_remaining(user_id: int) -> int:
     """Return remaining block time in seconds, or 0 if not blocked."""
@@ -23,35 +23,32 @@ async def get_block_remaining(user_id: int) -> int:
 
 async def is_spammer(user_id: int) -> int:
     """
-    Check if a user is currently blocked or should be blocked.
-    Returns: 0 if not blocked, 1 if already blocked, 2 if just blocked.
+    Returns: 0 if clear, 1 if already blocked, 2 if just triggered block.
     """
     now = time.time()
     
-    # 1. Check if user is currently blocked
+    # 1. Check if user is currently blocked in DB
     remaining = await get_block_remaining(user_id)
     if remaining > 0:
         return 1
     
-    # 2. Check transient activity for new spam
+    # 2. Track transient activity
     if user_id not in user_activity:
         user_activity[user_id] = []
     
-    # Cleanup old timestamps
+    # Cleanup timestamps older than the window
     user_activity[user_id] = [t for t in user_activity[user_id] if now - t < TIME_WINDOW]
-    
-    # Add now
     user_activity[user_id].append(now)
     
-    # Check limit
+    # 3. Check if they just hit the limit
     if len(user_activity[user_id]) > MSG_LIMIT:
-        # Block them
         until = now + BLOCK_DURATION
         await blocks_collection.update_one(
             {"id": user_id},
             {"$set": {"until": until}},
             upsert=True
         )
-        return 2
+        return 2 # This indicates the EXACT moment they are blocked
         
     return 0
+    
