@@ -1,9 +1,19 @@
 import re
 import uuid
-from telegram import Update, InlineQueryResultCachedPhoto, InlineQueryResultCachedVideo, InlineQueryResultCachedMpeg4Gif, InlineQueryResultCachedDocument, InlineQueryResultArticle, InputTextMessageContent, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import ContextTypes
 import telegram.error
-from bot.database.mongo import characters_collection
+from telegram import (
+    Update, 
+    InlineQueryResultCachedPhoto, 
+    InlineQueryResultCachedVideo, 
+    InlineQueryResultCachedMpeg4Gif, 
+    InlineQueryResultCachedDocument, 
+    InlineQueryResultArticle, 
+    InputTextMessageContent, 
+    InlineKeyboardButton, 
+    InlineKeyboardMarkup
+)
+from telegram.ext import ContextTypes
+from bot.database.mongo import characters_collection, users_collection
 from bot.utils.formatters import escape_markdown
 
 async def search_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -20,16 +30,10 @@ async def search_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def inline_query(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle inline queries to search for characters, with resilient fallbacks."""
-    from bot.database.mongo import users_collection
-    from telegram import InlineQueryResultArticle, InputTextMessageContent
-    import telegram.error
-
     query_text = update.inline_query.query.strip()
     user_id = update.inline_query.from_user.id
     
-    if not query_text:
-        return
-    # Always fetch current user for global catch-tags
+    # ALWAYS fetch current user for global catch-tags
     caller_data = await users_collection.find_one({"id": user_id})
     if not caller_data:
         caller_data = await users_collection.find_one({"id": str(user_id)})
@@ -58,10 +62,8 @@ async def inline_query(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 target_user_data = await users_collection.find_one({"username": re.compile(f"^{re.escape(target_username)}$", re.IGNORECASE)})
             
             if not target_user_data:
-                # If target not found, fallback to self or empty results
                 target_user_data = None 
         else:
-            # harem. with nothing after it falls back to self
             search_harem = True
             query_text = query_text[6:].strip()
             target_user_data = caller_data
@@ -75,36 +77,34 @@ async def inline_query(update: Update, context: ContextTypes.DEFAULT_TYPE):
     target_owned = list(target_user_data.get("waifus", [])) if target_user_data else []
     normalized_target_owned = {str(int(wid)) if str(wid).isdigit() else str(wid) for wid in target_owned}
 
-    # Filtration logic with robust ID padding handling
+    # Filtration logic with robust ID handling
     search_filter = {}
     if query_text:
         regex = re.compile(re.escape(query_text), re.IGNORECASE)
         or_filters = [{"name": regex}, {"anime": regex}]
         
-        # Smart ID lookup for digits: find "23" or "0023" etc.
+        # Smart ID lookup: Check both String and Integer versions of the ID
         if query_text.isdigit():
-            clean_id = str(int(query_text))
-            or_filters.append({"id": re.compile(f"^0*{clean_id}$")})
+            clean_id = int(query_text)
+            or_filters.append({"id": clean_id})
+            or_filters.append({"id": str(clean_id)})
         else:
             or_filters.append({"id": regex})
             
         search_filter["$or"] = or_filters
-    elif not search_harem:
-        # Default global search: Show some trending/random characters if query is empty
-        # Instead of returning nothing, we give them a sample to look at
-        search_filter = {"rarity": {"$in": ["Legendary", "Rare", "Mystical"]}}
-    
+
     if search_harem:
         search_filter["id"] = {"$in": list(normalized_target_owned)}
 
     # Fetching
     limit_val = 50
-    cursor = characters_collection.find(search_filter).limit(limit_val)
+    
+    # Sort by _id -1 (descending) to show newly uploaded characters first!
+    cursor = characters_collection.find(search_filter).sort("_id", -1).limit(limit_val)
     
     if search_harem and not query_text:
-        # Show 50 most recent captures in reverse order
         all_chars = await cursor.to_list(limit_val)
-        char_dict = {c['id']: c for c in all_chars}
+        char_dict = {str(c['id']): c for c in all_chars}
         unique_ordered = []
         seen_ids = set()
         for wid in reversed(target_owned):
@@ -117,9 +117,9 @@ async def inline_query(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         characters = await cursor.to_list(limit_val)
 
+    # Fallback if NOTHING is found
     if not characters and not search_harem:
-        # Final emergency fallback to some random characters if query returned nothing
-        characters = await characters_collection.find().limit(20).to_list(20)
+        characters = await characters_collection.find().sort("_id", -1).limit(20).to_list(20)
 
     results = []
     seen = set()
@@ -133,13 +133,12 @@ async def inline_query(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if norm_id in seen: continue
         seen.add(norm_id)
         
-        # Ownership status for the sender
         is_owned = norm_id in normalized_caller_owned
         ownership_tag = " [Caught ✅]" if is_owned else ""
-        rarity = char.get('rarity', 'Common')
+        rarity = str(char.get('rarity', 'Common'))
         
         emoji_map = {
-            "Common": "🔵", "Uncommon": "🟣", "Rare": "🟠", 
+            "1": "🤍", "Common": "🔵", "Uncommon": "🟣", "Rare": "🟠", 
             "Legendary": "🟡", "Mystical": "💮", "Divine": "⚜️",
             "Crossverse": "⚡", "Supreme": "🤍", "Cataphract": "✨"
         }
@@ -196,8 +195,8 @@ async def inline_query(update: Update, context: ContextTypes.DEFAULT_TYPE):
             input_message_content=InputTextMessageContent(caption, parse_mode="HTML")
         ))
 
-    # ALWAYS send an answer to prevent Spinner Hang
-    cache_time = 300 if search_harem else 60
+    cache_time = 300 if search_harem else 1  # Set to 1 for global search so newly added characters appear fast
+    
     if not results:
         results.append(InlineQueryResultArticle(
             id=str(uuid.uuid4()), title="No characters found",
@@ -209,15 +208,13 @@ async def inline_query(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.inline_query.answer(results, cache_time=cache_time, is_personal=True)
     except telegram.error.BadRequest as e:
         print(f"🚨 [INLINE ERROR] {e} | Query: {query_text}")
-        # Universal article fallback: convert ALL results to articles
         total_fallback = []
         for char in characters[:50]:
             char_id = str(char.get('id', 'N/A'))
             name = char.get('name', 'Unknown')
             anime = char.get('anime', 'Unknown')
-            rarity = char.get('rarity', 'Common')
+            rarity = str(char.get('rarity', 'Common'))
             
-            # Simple caption
             cap = (
                 f"OwO! Search Result!\n\n"
                 f"<b>{escape_markdown(anime)}</b>\n\n"
