@@ -1,10 +1,6 @@
-<<<<<<< HEAD
-Import re
-=======
 import time, html
 from bot.database.mongo import db
-import re
->>>>>>> 64ecece (Refactor: Consolidate leaderboards and add support group check for claims)
+
 from telegram import Update
 from telegram.ext import ContextTypes
 from bot.config import OWNER_ID, UPLOAD_CHANNEL_ID, LOG_CHAT_ID
@@ -562,9 +558,6 @@ async def delete_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 # we might just fetch all characters and filter in Python or use a clever regex.
                 if end - start < 1000:
                     for i in range(start, end + 1):
-<<<<<<< HEAD
-                        cursor = characte 
-=======
                         cursor = characters_collection.find({"id": re.compile(f"^0*{i}$")})
                         async for char in cursor:
                             actual_ids_to_delete.add(char['id'])
@@ -794,7 +787,6 @@ async def spwanglobal_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(f"🚀 Global spawning has been {status} across all groups.")
     await send_log(context, f"⚙️ <b>Global Spawn Toggle</b>\nBy: {update.effective_user.first_name}\nSpawning: {status}")
 
->>>>>>> 64ecece (Refactor: Consolidate leaderboards and add support group check for claims)
 
 async def sudolist_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """List all sudo users (Owner only)."""
