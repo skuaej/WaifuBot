@@ -16,7 +16,8 @@ from bot.modules.admin import (
     upload_cmd, delete_cmd, broadcast_cmd, changetime_cmd, 
     channel_post_handler, forward_save_handler, addsudo_cmd, 
     resudo_cmd, sudo_callback_handler, stats_cmd, send_log, 
-    ping_cmd, enable_cmd, spwanglobal_cmd
+    ping_cmd, enable_cmd, spwanglobal_cmd, sudolist_cmd,
+    transfer_cmd, transfercheck_cmd, bang_cmd, unbang_cmd, update_cmd
 )
 from bot.utils.formatters import escape_markdown
 from bot.config import BOT_TOKEN, LOG_CHAT_ID
@@ -24,14 +25,15 @@ from bot.database.mongo import init_db
 from bot.modules.spawn import group_message_handler
 from bot.modules.capture import capture_cmd
 from bot.modules.collection import (
-    harem_cmd, profile_cmd, top_cmd, gtop_cmd, fav_cmd, 
-    check_cmd, hmode_cmd, collection_callback_handler, hclaim_cmd
+    harem_cmd, profile_cmd, top_cmd, fav_cmd, 
+    check_cmd, hmode_cmd, collection_callback_handler, hclaim_cmd, fav_callback_handler,
+    topgroups_cmd
 )
-from bot.modules.trade import trade_cmd, gift_cmd, accept_cmd, reset_cmd, gift_callback_handler
+from bot.modules.trade import trade_cmd, gift_cmd, accept_cmd, reset_cmd, gift_callback_handler, trade_callback_handler
 from bot.modules.economy import balance_cmd, bonus_cmd, transfer_cmd
 from bot.modules.search import inline_query, search_cmd
 from bot.modules.gift import cgrant_cmd
-from bot.modules.help import help_cmd
+from bot.modules.help import help_cmd, help_callback_handler
 from bot.modules.smash import smash_cmd, cancel_cmd, game_callback_handler
 from bot.utils.spam import is_spammer
 from bot.web import start_server
@@ -48,6 +50,18 @@ async def check_spam_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
     if not user:
         return
     user_id = user.id
+    
+    # 0. Global Ban Check (Persistent)
+    from bot.database.mongo import db
+    bans_col = db['bans']
+    if await bans_col.find_one({"user_id": user_id}):
+        # Notify once if it's a message
+        if update.message:
+            try:
+                await update.effective_chat.send_message("❌ You are globally banned from using this bot.")
+            except: pass
+        raise ApplicationHandlerStop()
+
     from bot.utils.spam import get_block_remaining, is_spammer
     
     # 1. Update activity window and check status
@@ -71,9 +85,9 @@ async def check_spam_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
             if remaining > 0:
                 logging.info(f"🚫 BLOCKED COMMAND (FEEDBACK): User {user_id} tried '{text[:20]}...'")
                 try:
-                    await update.message.reply_text(
-                        f"🚫 <b>YOU ARE BLOCKED!</b> Get free in: {remaining // 60}m {remaining % 60}s\n"
-                        f"Only /profile is available.",
+                    await update.effective_chat.send_message(
+                        f"🚫 <b>YOU ARE BLOCKED!</b> (Time: {remaining // 60}m {remaining % 60}s)\n"
+                        f"Use /profile to check your status.",
                         parse_mode="HTML"
                     )
                 except: pass
@@ -103,27 +117,41 @@ async def debug_all_updates(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def start_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Intro message with inline group join buttons."""
+    import random
     from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-    text = (
-        "🌟 <b>Welcome to Waifu Catcher Bot!</b> 🌟\n\n"
-        "I will spawn waifus in your group when people chat.\n"
-        "Be the first to guess their name using /grab or /guess to catch them!\n\n"
-        "📌 <b>Commands:</b>\n"
-        "/hclaim - Claim a free random character daily\n"
-        "/harem - View your collection\n"
-        "/profile - View your stats\n\n"
-        "Join our groups to start catching! 👇"
-    )
+    from bot.config import BOT_TOKEN, SUPPORT_CHAT_LINK
+
+    PHOTO_URL = [
+        "https://telegra.ph/file/b925c3985f0f325e62e17.jpg",
+        "https://telegra.ph/file/4211fb191383d895dab9d.jpg"
+    ]
+    photo_url = random.choice(PHOTO_URL)
+    me = await context.bot.get_me()
+    
     keyboard = [
-        [InlineKeyboardButton("🚀 Join Support Chat", url="Https://t.me/+xIDVAEvE5m0yMTNl")],
-        [InlineKeyboardButton("➕ Add me to your group", url=f"https://t.me/{(await context.bot.get_me()).username}?startgroup=true")],
-        [InlineKeyboardButton("🌸 Official Group", url="https://t.me/+" + "3868807342")]
+        [InlineKeyboardButton("ADD ME", url=f"http://t.me/{me.username}?startgroup=new")],
+        [
+            InlineKeyboardButton("SUPPORT", url=SUPPORT_CHAT_LINK or "https://t.me/"),
+            InlineKeyboardButton("UPDATES", url="https://t.me/")
+        ],
+        [InlineKeyboardButton("HELP", callback_data="start_help")],
+        [InlineKeyboardButton("SOURCE", url="https://github.com/MyNameIsShekhar/WAIFU-HUSBANDO-CATCHER")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    await update.message.reply_text(text, parse_mode="HTML", reply_markup=reply_markup)
-    if update.effective_chat.type == "private":
-        await send_log(context, f"👤 <b>User Started Bot</b>\nUser: {update.effective_user.first_name} (<code>{update.effective_user.id}</code>)")
 
+    if update.effective_chat.type == "private":
+        caption = (
+            "***Heyyyy...***\n\n"
+            "***I am An Open Source Character Catcher Bot...​Add Me in Your group.. And I will send Random Characters After.. every 100 messages in Group... Use /guess to.. Collect that Characters in Your Collection.. and see Collection by using /Harem... So add in Your groups and Collect Your harem***"
+        )
+        await update.message.reply_photo(photo=photo_url, caption=caption, reply_markup=reply_markup, parse_mode="markdown")
+        await send_log(context, f"👤 <b>User Started Bot</b>\nUser: {update.effective_user.first_name} (<code>{update.effective_user.id}</code>)")
+    else:
+        await update.message.reply_photo(
+            photo=photo_url, 
+            caption="🎴Alive!?... \n connect to me in PM For more information ",
+            reply_markup=reply_markup
+        )
 
 def main():
     if not BOT_TOKEN:
@@ -156,13 +184,16 @@ def main():
     application.add_handler(CommandHandler("harem", harem_cmd))
     application.add_handler(CommandHandler("profile", profile_cmd))
     application.add_handler(CommandHandler("top", top_cmd))
-    application.add_handler(CommandHandler("gtop", gtop_cmd))
+    application.add_handler(CommandHandler("TopGroups", topgroups_cmd))
     application.add_handler(CommandHandler("fav", fav_cmd))
     application.add_handler(CommandHandler("hmode", hmode_cmd))
     application.add_handler(CommandHandler("check", check_cmd))
     application.add_handler(CallbackQueryHandler(gift_callback_handler, pattern="^gift_"))
     application.add_handler(CallbackQueryHandler(sudo_callback_handler, pattern="^sudo_"))
     application.add_handler(CallbackQueryHandler(game_callback_handler, pattern="^smash_"))
+    application.add_handler(CallbackQueryHandler(help_callback_handler, pattern="^(start_|help_)"))
+    application.add_handler(CallbackQueryHandler(trade_callback_handler, pattern="^trade_"))
+    application.add_handler(CallbackQueryHandler(fav_callback_handler, pattern="^fav_"))
     application.add_handler(CallbackQueryHandler(collection_callback_handler))
     
     # Trade & Economy
@@ -187,9 +218,15 @@ def main():
     application.add_handler(CommandHandler(["stats", "total"], stats_cmd))
     application.add_handler(CommandHandler("ping", ping_cmd))
     application.add_handler(CommandHandler("cgrant", cgrant_cmd))
+    application.add_handler(CommandHandler("sudolist", sudolist_cmd))
+    application.add_handler(CommandHandler("transfer", transfer_cmd))
+    application.add_handler(CommandHandler("transfercheck", transfercheck_cmd))
+    application.add_handler(CommandHandler("bang", bang_cmd))
+    application.add_handler(CommandHandler("unbang", unbang_cmd))
+    application.add_handler(CommandHandler("update", update_cmd))
     
     # Harem Claim
-    application.add_handler(CommandHandler("hclaim", hclaim_cmd))
+    application.add_handler(CommandHandler(["hclaim", "claim"], hclaim_cmd))
     
     # Channel Post Handler for Auto-Uploads
     application.add_handler(MessageHandler(filters.ChatType.CHANNEL, channel_post_handler))

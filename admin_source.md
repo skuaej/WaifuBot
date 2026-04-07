@@ -1,10 +1,4 @@
-<<<<<<< HEAD
-Import re
-=======
-import time, html
-from bot.database.mongo import db
 import re
->>>>>>> 64ecece (Refactor: Consolidate leaderboards and add support group check for claims)
 from telegram import Update
 from telegram.ext import ContextTypes
 from bot.config import OWNER_ID, UPLOAD_CHANNEL_ID, LOG_CHAT_ID
@@ -562,9 +556,6 @@ async def delete_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 # we might just fetch all characters and filter in Python or use a clever regex.
                 if end - start < 1000:
                     for i in range(start, end + 1):
-<<<<<<< HEAD
-                        cursor = characte 
-=======
                         cursor = characters_collection.find({"id": re.compile(f"^0*{i}$")})
                         async for char in cursor:
                             actual_ids_to_delete.add(char['id'])
@@ -654,99 +645,84 @@ async def stats_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(text, parse_mode="HTML")
 
 async def broadcast_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """/broadcast - Reply to a message to forward it to all users and groups"""
-    import asyncio
-    from bot.database.mongo import users_collection, groups_collection
-    
-    if update.effective_user.id != OWNER_ID:
-        await update.message.reply_text("You are not authorized to use this command.")
+    """/broadcast message"""
+    if not await check_admin(update):
         return
 
-    message_to_broadcast = update.message.reply_to_message
-
-    if message_to_broadcast is None:
-        await update.message.reply_text("Please reply to a message to broadcast.")
+    if not context.args:
+        await update.message.reply_text("Usage: /broadcast message")
         return
 
-    all_groups = await groups_collection.distinct("id")
-    all_users = await users_collection.distinct("id")
-
-    shuyaa = list(set([str(g) for g in all_groups] + [str(u) for u in all_users if u]))
-
-    failed_sends = 0
-    msg = await update.message.reply_text(f"Broadcasting to {len(shuyaa)} targets...")
-
-    for chat_id in shuyaa:
-        try:
-            await context.bot.forward_message(chat_id=chat_id,
-                                              from_chat_id=message_to_broadcast.chat_id,
-                                              message_id=message_to_broadcast.message_id)
-            await asyncio.sleep(0.05)
-        except Exception as e:
-            failed_sends += 1
-
-    await msg.edit_text(f"✅ Broadcast complete. Failed to send to {failed_sends} chats/users.")
+    # In a real scenario, you'd iterate over all users/groups. We will implement this later.
+    await update.message.reply_text("Broadcasting...")
+    # The actual broadcast logic needs users_collection or groups_collection iterating.
 
 async def changetime_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """/changetime <number_of_messages>"""
-    user_id = update.effective_user.id
-    chat_id = update.effective_chat.id
-    
-    if update.effective_chat.type == "private":
-        await update.message.reply_text("This command only works in groups.")
+    """/changetime interval"""
+    if not await check_admin(update):
         return
-
-    # Check if user is admin in the chat, skip if sudo
-    is_sudo_user = await is_sudo(user_id)
-    if not is_sudo_user:
-        try:
-            member = await context.bot.get_chat_member(chat_id, user_id)
-            if member.status not in ["administrator", "creator"]:
-                await update.message.reply_text("You are not an Admin.")
-                return
-        except Exception as e:
-            await update.message.reply_text("Failed to verify admin status. Ensure I am an admin.")
-            return
-
-    if not context.args or len(context.args) != 1:
-        await update.message.reply_text("Please use: /changetime NUMBER")
+        
+    if not context.args:
+        await update.message.reply_text("Usage: /changetime <number_of_messages>")
         return
         
     try:
-        new_frequency = int(context.args[0])
-        if new_frequency < 100:
-            if not await is_sudo(user_id):
-                await update.message.reply_text("The message frequency must be greater than or equal to 100.")
-                return
+        target = int(context.args[0])
+        if target < 1:
+            raise ValueError
     except ValueError:
         await update.message.reply_text("Please provide a valid positive integer.")
         return
         
+    chat_id = update.effective_chat.id
+    
     from bot.database.mongo import groups_collection
-    try:
-        await groups_collection.update_one(
-            {"id": chat_id},
-            {"$set": {"spawn_target": new_frequency}},
-            upsert=True
-        )
-        await update.message.reply_text(f"Successfully changed {new_frequency}")
-    except Exception as e:
-        await update.message.reply_text(f"Failed to change {str(e)}")
+    await groups_collection.update_one(
+        {"id": chat_id},
+        {"$set": {"spawn_target": target}},
+        upsert=True
+    )
+    
+    await update.message.reply_text(f"✅ Spawn rate for this chat set to every {target} messages.")
 
 async def ping_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Check bot latency."""
+    """Check bot health, latency, and system resources."""
     import time
-    
-    user_id = update.effective_user.id
-    if not await is_sudo(user_id):
-        await update.message.reply_text("Nouu.. its Sudo user's Command..")
-        return
+    try:
+        import psutil
+        import shutil
+    except ImportError:
+        psutil = None
 
     start_time = time.time()
-    msg = await update.message.reply_text('Pong!')
+    msg = await update.message.reply_text("Pinging...")
     end_time = time.time()
-    elapsed_time = round((end_time - start_time) * 1000, 3)
-    await msg.edit_text(f'Pong! {elapsed_time}ms')
+    latency = (end_time - start_time) * 1000
+    
+    # System Info
+    sys_info = ""
+    if psutil:
+        mem = psutil.virtual_memory()
+        cpu = psutil.cpu_percent()
+        # Storage
+        usage = shutil.disk_usage("/")
+        free_gb = usage.free / (1024**3)
+        total_gb = usage.total / (1024**3)
+        
+        sys_info = (
+            f"💻 <b>System Stats:</b>\n"
+            f"├ RAM: <code>{mem.percent}%</code> ({mem.used//1024//1024}MB / {mem.total//1024//1024}MB)\n"
+            f"├ CPU: <code>{cpu}%</code>\n"
+            f"└ Storage: <code>{free_gb:.1f}GB Free</code> / {total_gb:.1f}GB\n"
+        )
+
+    await msg.edit_text(
+        f"🏁 <b>Pong!</b>\n"
+        f"Latency: <code>{latency:.2f}ms</code>\n"
+        f"Status: 🟢 Healthy\n\n"
+        f"{sys_info}",
+        parse_mode="HTML"
+    )
 
 async def enable_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """/enable <on/off> - Toggle games globally (owner only)."""
@@ -794,191 +770,4 @@ async def spwanglobal_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(f"🚀 Global spawning has been {status} across all groups.")
     await send_log(context, f"⚙️ <b>Global Spawn Toggle</b>\nBy: {update.effective_user.first_name}\nSpawning: {status}")
 
->>>>>>> 64ecece (Refactor: Consolidate leaderboards and add support group check for claims)
 
-async def sudolist_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """List all sudo users (Owner only)."""
-    if not await check_owner(update):
-        return
-        
-    sudos = await sudos_collection.find().to_list(length=100)
-    if not sudos:
-        await update.message.reply_text("There are no sudo users yet.")
-        return
-        
-    text = "👤 <b>SUDO USERS LIST</b>\n\n"
-    for s in sudos:
-        uid = s.get("user_id")
-        powers = s.get("powers", [])
-        powers_str = ", ".join(powers) if powers else "No specific powers"
-        text += f"➥ <code>{uid}</code> [ {powers_str} ]\n"
-        
-    await update.message.reply_text(text, parse_mode="HTML")
-async def transfer_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """/transfer <old_id> <new_id> - Transfer entire harem between IDs (Owner/Sudo)."""
-    if not await check_admin(update):
-        return
-        
-    if len(context.args) != 2:
-        await update.message.reply_text("Usage: /transfer <old_id> <new_id>")
-        return
-        
-    try:
-        old_id = int(context.args[0])
-        new_id = int(context.args[1])
-    except ValueError:
-        await update.message.reply_text("❌ IDs must be numeric.")
-        return
-        
-    old_user = await users_collection.find_one({"id": old_id})
-    if not old_user or not old_user.get("waifus"):
-        await update.message.reply_text(f"❌ User <code>{old_id}</code> has no collection.", parse_mode="HTML")
-        return
-        
-    waifus_to_transfer = old_user["waifus"]
-    
-    # Merge into new_id
-    await users_collection.update_one(
-        {"id": new_id},
-        {"$push": {"waifus": {"$each": waifus_to_transfer}}},
-        upsert=True
-    )
-    
-    # Delete old account
-    await users_collection.delete_one({"id": old_id})
-    
-    await update.message.reply_text(
-        f"✅ Successfully transferred {len(waifus_to_transfer)} waifus from <code>{old_id}</code> to <code>{new_id}</code>.\n"
-        f"🗑️ Old account <code>{old_id}</code> data deleted.",
-        parse_mode="HTML"
-    )
-    await send_log(context, f"📦 <b>Harem Transfer</b>\nBy: {update.effective_user.first_name}\nFrom: <code>{old_id}</code>\nTo: <code>{new_id}</code>\nCount: {len(waifus_to_transfer)}")
-
-async def transfercheck_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """/transfercheck <id> - Check if an ID has a collection (Owner/Sudo)."""
-    if not await check_admin(update):
-        return
-        
-    if not context.args:
-        await update.message.reply_text("Usage: /transfercheck <id>")
-        return
-        
-    try:
-        target_id = int(context.args[0])
-    except ValueError:
-        await update.message.reply_text("❌ ID must be numeric.")
-        return
-        
-    user = await users_collection.find_one({"id": target_id})
-    if user and user.get("waifus"):
-        await update.message.reply_text(f"📝 User <code>{target_id}</code> has {len(user['waifus'])} characters.", parse_mode="HTML")
-    else:
-        await update.message.reply_text(f"❌ User <code>{target_id}</code> not found or has no collection.", parse_mode="HTML")
-
-async def bang_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """/bang <id> - Permanently ban a user (Owner only)."""
-    if not await check_owner(update):
-        return
-        
-    if not context.args:
-        await update.message.reply_text("Usage: /bang <user_id>")
-        return
-        
-    try:
-        user_id = int(context.args[0])
-    except ValueError:
-        await update.message.reply_text("❌ User ID must be numeric.")
-        return
-        
-    bans_col = db['bans']
-    await bans_col.update_one({"user_id": user_id}, {"$set": {"banned_at": time.time()}}, upsert=True)
-    
-    await update.message.reply_text(f"🚫 User <code>{user_id}</code> has been PERMANENTLY BANNED.", parse_mode="HTML")
-    await send_log(context, f"🚫 <b>Global Ban</b>\nBy:Owner\nTarget: <code>{user_id}</code>")
-
-async def unbang_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """/unbang <id> - Remove permanent ban (Owner only)."""
-    if not await check_owner(update):
-        return
-        
-    if not context.args:
-        await update.message.reply_text("Usage: /unbang <user_id>")
-        return
-        
-    try:
-        user_id = int(context.args[0])
-    except ValueError:
-        await update.message.reply_text("❌ User ID must be numeric.")
-        return
-        
-    bans_col = db['bans']
-    result = await bans_col.delete_one({"user_id": user_id})
-    
-    if result.deleted_count > 0:
-        await update.message.reply_text(f"✅ User <code>{user_id}</code> unbanned.", parse_mode="HTML")
-    else:
-        await update.message.reply_text("❌ User is not banned.")
-
-async def update_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """/update <id> [name] [series] [rarity] [type] - Update character metadata/image."""
-    if not await check_admin(update):
-        return
-        
-    if not context.args:
-        await update.message.reply_text("Usage: /update <id> [name] [series] [rarity] [type]")
-        return
-        
-    char_id = context.args[0]
-    char = await characters_collection.find_one({"id": char_id})
-    if not char:
-        await update.message.reply_text(f"❌ Character ID {char_id} not found.")
-        return
-        
-    update_data = {}
-    
-    # 1. Update Media if replying to photo/video
-    if update.message.reply_to_message:
-        reply = update.message.reply_to_message
-        if reply.photo:
-            update_data["file_id"] = reply.photo[-1].file_id
-            update_data["file_type"] = "photo"
-        elif reply.video:
-            update_data["file_id"] = reply.video.file_id
-            update_data["file_type"] = "video"
-        elif reply.animation:
-            update_data["file_id"] = reply.animation.file_id
-            update_data["file_type"] = "animation"
-            
-    # 2. Update Text Fields if provided
-    if len(context.args) > 1:
-        # Simple positional parsing or we can do something smarter
-        # Format: /update ID "NAME" "SERIES" RARITY TYPE
-        # For simplicity, let's just use what's provided
-        meta = context.args[1:]
-        if len(meta) >= 1: update_data["name"] = meta[0]
-        if len(meta) >= 2: update_data["anime"] = meta[1]
-        if len(meta) >= 3:
-            rarity_input = meta[2]
-            update_data["rarity"] = RARITY_MAP.get(rarity_input, rarity_input)
-        if len(meta) >= 4: update_data["type"] = meta[3]
-        
-    if not update_data:
-        await update.message.reply_text("❓ No update provided. Either reply to media or provide text arguments.")
-        return
-        
-    await characters_collection.update_one({"id": char_id}, {"$set": update_data})
-    
-    await update.message.reply_text(f"✅ Character <code>{char_id}</code> updated successfully.", parse_mode="HTML")
-    
-    # 3. Log with media preview
-    current_char = await characters_collection.find_one({"id": char_id})
-    file_id = current_char.get("file_id")
-    file_type = current_char.get("file_type", "photo")
-    
-    log_text = (
-        f"📝 <b>Character Updated</b>\n"
-        f"By: {update.effective_user.first_name} (<code>{update.effective_user.id}</code>)\n"
-        f"ID: <code>{char_id}</code>\n"
-        f"Fields: {list(update_data.keys()) or ['Media Only']}"
-    )
-    await send_log(context, log_text, file_id=file_id, file_type=file_type)

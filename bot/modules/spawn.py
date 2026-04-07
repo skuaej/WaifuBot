@@ -88,10 +88,13 @@ async def group_message_handler(update: Update, context: ContextTypes.DEFAULT_TY
     if global_settings and not global_settings.get("spawn_enabled", True):
         return
     
-    # check block status
-    from bot.utils.spam import get_block_remaining
-    if await get_block_remaining(user_id) > 0:
-        print(f"Ignored message from blocked user {user_id} for spawn count.")
+    # check block status & consecutive spamming
+    from bot.utils.spam import get_block_remaining, check_and_warn_spam
+    user_first_name = update.effective_user.first_name
+    
+    is_spamming = await check_and_warn_spam(chat_id, user_id, user_first_name, update.message)
+    if is_spamming or await get_block_remaining(user_id) > 0:
+        print(f"Ignored message from blocked/spamming user {user_id} for spawn count.")
         return
 
     # Upsert group stats manually to avoid unsupported return_document=True error

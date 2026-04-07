@@ -263,6 +263,12 @@ async def trade_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "type": "trade"
     }
 
+    keyboard = [
+        [InlineKeyboardButton("✅ Confirm Trade", callback_data=f"trade_confirm_{target_user.id}")],
+        [InlineKeyboardButton("❌ Cancel Trade", callback_data=f"trade_cancel_{target_user.id}")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
     sender_mention = f"<a href='tg://user?id={sender.id}'>{escape_markdown(sender.first_name)}</a>"
     target_mention = f"<a href='tg://user?id={target_user.id}'>{escape_markdown(target_user.first_name)}</a>"
 
@@ -270,9 +276,87 @@ async def trade_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"🔄 <b>Tʀᴀᴅᴇ Pʀᴏᴘᴏsᴀʟ!</b>\n\n"
         f"<b>{sender_mention}</b> offers: <b>{escape_markdown(offer_char['name'])}</b>\n"
         f"For <b>{target_mention}</b>'s: <b>{escape_markdown(request_char['name'])}</b>\n\n"
-        f"👉 {target_mention}, reply with `/accept` to confirm.",
-        parse_mode="HTML"
+        f"👉 {target_mention}, do you accept this trade?",
+        parse_mode="HTML",
+        reply_markup=reply_markup
     )
+
+async def trade_callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle the 'Confirm Trade' and 'Cancel Trade' inline buttons."""
+    query = update.callback_query
+    data = query.data
+    user = query.from_user
+
+    if not data.startswith("trade_"):
+        return
+
+    action = data.split("_")[1]
+    target_id = int(data.split("_")[2])
+    deal = active_deals.get(target_id)
+    
+    if not deal or deal.get("type") != "trade":
+        await query.answer("❌ This trade deal has expired or is invalid.", show_alert=True)
+        await query.message.delete()
+        return
+
+    # ONLY the target should confirm/cancel
+    if user.id != target_id:
+        await query.answer("❌ This is not for you!", show_alert=True)
+        return
+
+    if action == "cancel":
+        active_deals.pop(target_id, None)
+        await query.message.edit_text("❌️ Sad Cancelled....")
+        await query.answer("Trade cancelled.")
+        return
+
+    if action == "confirm":
+        initiator_id = deal.get("initiator_id")
+        offer_char = deal.get("offer_char")
+        request_char = deal.get("request_char")
+        
+        sender_data = await users_collection.find_one({"id": initiator_id})
+        target_data = await users_collection.find_one({"id": target_id})
+
+        norm_offer = str(int(offer_char['id'])) if str(offer_char['id']).isdigit() else str(offer_char['id'])
+        norm_request = str(int(request_char['id'])) if str(request_char['id']).isdigit() else str(request_char['id'])
+
+        s_waifus = sender_data.get("waifus", []) if sender_data else []
+        t_waifus = target_data.get("waifus", []) if target_data else []
+        
+        # Verify ownership exactly
+        s_match = next((wid for wid in s_waifus if (str(int(wid)) if str(wid).isdigit() else wid) == norm_offer), None)
+        t_match = next((wid for wid in t_waifus if (str(int(wid)) if str(wid).isdigit() else wid) == norm_request), None)
+
+        if not s_match:
+            await query.answer("❌ Trade failed: Initiator no longer owns the character.", show_alert=True)
+            return
+
+        if not t_match:
+            await query.answer("❌ Trade failed: You no longer own the character.", show_alert=True)
+            return
+
+        # Perform swap
+        s_waifus.remove(s_match)
+        t_waifus.remove(t_match)
+        
+        await users_collection.update_one({"id": initiator_id}, {"$set": {"waifus": s_waifus}})
+        await users_collection.update_one({"id": target_id}, {"$set": {"waifus": t_waifus}})
+        
+        await users_collection.update_one({"id": initiator_id}, {"$push": {"waifus": t_match}})
+        await users_collection.update_one({"id": target_id}, {"$push": {"waifus": s_match}})
+        
+        if sender_data.get("favorite") == s_match:
+            await users_collection.update_one({"id": initiator_id}, {"$unset": {"favorite": ""}})
+        if target_data.get("favorite") == t_match:
+            await users_collection.update_one({"id": target_id}, {"$unset": {"favorite": ""}})
+            
+        active_deals.pop(target_id, None)
+
+        sender_user = await context.bot.get_chat(initiator_id)
+        sender_mention = f"<a href='tg://user?id={initiator_id}'>{escape_markdown(sender_user.first_name)}</a>"
+        await query.message.edit_text(f"✅ Trade Confirmed! You successfully traded characters with {sender_mention}!", parse_mode="HTML")
+        await query.answer("✅ Trade successful!")
 
 async def reset_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """/reset to cancel ongoing trade or gift deals."""
@@ -296,53 +380,5 @@ async def reset_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("⏹️ ʏᴏᴜ ᴅᴏɴ'ᴛ ʜᴀᴠᴇ ᴀɴʏ ᴏɴɢᴏɪɴɢ ᴛʀᴀᴅᴇ ᴏʀ ɢɪғᴛ ᴅᴇᴀʟs.")
 
 async def accept_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """/accept to confirm trade or receive gift."""
-    user = update.effective_user
-    if user.id not in active_deals:
-        await update.message.reply_text("❌ You have no pending trades or gift deals to accept.")
-        return
-
-    deal = active_deals.pop(user.id)
-    initiator_id = deal["initiator_id"]
-    
-    if deal.get("type") == "gift":
-        await update.message.reply_text("❌ This gift must be confirmed by the sender using the button on the gift message.")
-        active_deals[user.id] = deal
-        return
-
-    # Trade logic
-    offer_char = deal["offer_char"]
-    request_char = deal["request_char"]
-
-    sender_data = await users_collection.find_one({"id": initiator_id})
-    target_data = await users_collection.find_one({"id": user.id})
-
-    if not sender_data or offer_char['id'] not in sender_data.get("waifus", []):
-        await update.message.reply_text("❌ Trade failed: Initiator no longer owns the character.")
-        return
-
-    if not target_data or request_char['id'] not in target_data.get("waifus", []):
-        await update.message.reply_text("❌ Trade failed: You no longer own the character.")
-        return
-
-    # Perform swap
-    # Pull ONE instance each
-    s_waifus = sender_data.get("waifus", [])
-    if offer_char['id'] in s_waifus:
-        s_waifus.remove(offer_char['id'])
-        await users_collection.update_one({"id": initiator_id}, {"$set": {"waifus": s_waifus}})
-        
-    t_waifus = target_data.get("waifus", [])
-    if request_char['id'] in t_waifus:
-        t_waifus.remove(request_char['id'])
-        await users_collection.update_one({"id": user.id}, {"$set": {"waifus": t_waifus}})
-    
-    await users_collection.update_one({"id": initiator_id}, {"$push": {"waifus": request_char['id']}})
-    await users_collection.update_one({"id": user.id}, {"$push": {"waifus": offer_char['id']}})
-    
-    if sender_data.get("favorite") == offer_char['id']:
-        await users_collection.update_one({"id": initiator_id}, {"$unset": {"favorite": ""}})
-    if target_data.get("favorite") == request_char['id']:
-        await users_collection.update_one({"id": user.id}, {"$unset": {"favorite": ""}})
-
-    await update.message.reply_text("✅ Trade successful! Characters have been swapped.")
+    """Deprecated /accept command. Tell user to use inline buttons."""
+    await update.message.reply_text("❌ Please use the inline buttons on the trade or gift proposal to confirm or cancel.")

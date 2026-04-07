@@ -144,11 +144,55 @@ async def inline_query(update: Update, context: ContextTypes.DEFAULT_TYPE):
         }
         r_emoji = emoji_map.get(rarity, "💮")
         
+        # Fetch global catch stats for this one character
+        search_ids = [char_id]
+        if char_id.isdigit():
+            search_ids.append(int(char_id))
+            
+        stats_pipeline = [
+            {"$match": {"waifus": {"$in": search_ids}}},
+            {"$project": {
+                "name": 1, "first_name": 1, "id": 1,
+                "count": {
+                    "$size": {
+                        "$filter": {
+                            "input": "$waifus",
+                            "cond": {"$in": ["$$this", search_ids]}
+                        }
+                    }
+                }
+            }},
+            {"$facet": {
+                "total": [{"$group": {"_id": None, "total": {"$sum": "$count"}}}],
+                "top": [{"$sort": {"count": -1}}, {"$limit": 3}]
+            }}
+        ]
+        
+        stats_results = await users_collection.aggregate(stats_pipeline).to_list(length=1)
+        global_total = 0
+        top_text = ""
+        
+        if stats_results:
+            facet = stats_results[0]
+            if facet.get("total"):
+                global_total = facet["total"][0]["total"]
+            
+            tops = facet.get("top", [])
+            if tops:
+                top_text = "\n🏅 <b>Top Catchers:</b>\n"
+                for u in tops:
+                    t_name = escape_markdown(u.get('name') or u.get('first_name') or 'Unknown')
+                    t_id = u.get('id') or u.get('_id', 'Unknown')
+                    t_count = u.get('count', 0)
+                    top_text += f"➥ <a href='tg://user?id={t_id}'>{t_name}</a> (<code>{t_id}</code>) x{t_count}\n"
+        
         caption = (
             f"OwO! Check out this character!{ownership_tag}\n\n"
             f"<b>{escape_markdown(anime)}</b>\n\n"
             f"{char_id}: <b>{escape_markdown(name)}</b>\n\n"
-            f"<b>Rarity:</b> ({r_emoji} <b>RARITY:</b> {rarity})"
+            f"<b>Rarity:</b> ({r_emoji} <b>RARITY:</b> {rarity})\n"
+            f"<b>Globally Caught:</b> {global_total} times"
+            f"{top_text}"
         )
         
         file_id = char.get('file_id')

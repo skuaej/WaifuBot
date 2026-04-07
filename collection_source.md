@@ -6,7 +6,6 @@ from bot.utils.formatters import escape_markdown
 import re
 import random
 import math
-import html
 
 async def get_harem_page(user_id: int, page: int, target_user_name: str) -> tuple:
     user_data = await users_collection.find_one({"id": user_id})
@@ -263,7 +262,6 @@ async def profile_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 break
             g_idx += 1
         
-        
     # Local Rank (captures in this chat)
     local_rank_pipeline = [
         {"$match": {"chat_id": chat_id}},
@@ -275,11 +273,7 @@ async def profile_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     async for entry in captures_collection.aggregate(local_rank_pipeline):
         if entry["_id"] == user.id:
             local_rank = l_idx
-            break
-            
-    h_percent = (total_distinct / max_characters) * 100
-    
-    text = (
+            b    text = (
         "  ╭──「 🎗️ Cᴀᴛᴄʜᴇʀ Pʀᴏғɪʟᴇ 🎗 」\n"
         f"├─➩ 👤 ᴜsᴇʀ: <a href='tg://user?id={user.id}'>{escape_markdown(user.first_name)}</a>\n"
         f"├─➩ 🔩 ᴜsᴇʀ ɪᴅ: <code>{user.id}</code>\n"
@@ -301,82 +295,82 @@ async def profile_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"├─➩ 📍 Cʜᴀᴛ Rᴀɴᴋ: {local_rank if local_rank > 0 else 'N/A'}\n"
         "╰───────────────────"
     )
+��𝙄ᴛʏ: Divine: {rarities['Divine']}\n"
+        f"├─➩ ⚡ 𝙍𝘼𝙍𝙄𝙏𝙔: Crossverse: {rarities['Crossverse']}\n"
+        f"├─➩ 🪞 𝙍𝘼𝙍𝙄𝙏𝙔: Supreme: {rarities['Supreme']}\n"
+        f"├─➩ ✨ 𝙍𝘼𝙍𝙄ᴛʏ: Cataphract: {rarities['Cataphract']}\n"
+        "╭───────────────────\n"
+        f"├─➩ 🏆 Gʟᴏʙᴀʟ Rᴀɴᴋ: {global_rank if global_rank > 0 else 'N/A'}\n"
+        f"├─➩ 📍 Cʜᴀᴛ Rᴀɴᴋ: {local_rank if local_rank > 0 else 'N/A'}\n"
+        "╰───────────────────"
+    )
     await update.message.reply_text(text, parse_mode="HTML")
 
 async def top_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """TOP 10 USERS WITH MOST CHARACTERS GLOBALLY (Replaces /ctop /gtop)."""
+    """Global Leaderboard based on total waifus (as requested)."""
     user_pipeline = [
         {"$project": {
             "name": 1,
-            "first_name": 1,
             "id": 1,
             "waifu_count": {"$size": {"$ifNull": ["$waifus", []]}}
         }},
         {"$sort": {"waifu_count": -1}},
         {"$limit": 10}
     ]
-    try:
-        leaderboard_data = await users_collection.aggregate(user_pipeline).to_list(length=10)
-    except Exception as e:
-        print(f"TOP AGGREGATION ERROR: {e}")
-        await update.message.reply_text("❌ Error fetching the global leaderboard.")
-        return
-        
-    if not leaderboard_data:
-        await update.message.reply_text("❌ No users found in the leaderboard.")
-        return
-        
-    text = "<b>TOP 10 USERS WITH MOST CHARACTERS GLOBALLY</b>\n\n"
+    user_cursor = users_collection.aggregate(user_pipeline)
+    
+    text = "🏆 <b>Global User Leaderboard</b> 🏆\n\n"
     idx = 1
-    for u in leaderboard_data:
-        user_id = u.get('id')
-        name_val = u.get('name') or u.get('first_name') or 'Unknown'
-        user_name = html.escape(str(name_val))
-        if len(user_name) > 15:
-            user_name = user_name[:15] + '...'
-            
+    async for u in user_cursor:
+        user_id = u.get('id', 'Unknown')
+        user_name = escape_markdown(u.get('name', 'Unknown'))
+        name_mention = f"<a href='tg://user?id={user_id}'>{user_name}</a>"
         count = u.get('waifu_count', 0)
-        
-        if user_id:
-            text += f"{idx}. <a href='tg://user?id={user_id}'><b>{user_name}</b></a> (<code>{user_id}</code>) ➾ <b>{count}</b>\n"
-        else:
-            text += f"{idx}. <b>{user_name}</b> (<code>{u.get('_id')}</code>) ➾ <b>{count}</b>\n"
+        text += f"<b>{idx}.</b> {name_mention} (ID: <code>{user_id}</code>) — {count} waifus\n"
         idx += 1
 
-    from bot.config import PHOTO_URL
-    photo_url = random.choice(PHOTO_URL) if PHOTO_URL else "https://telegra.ph/file/b925c3985f0f325e62e17.jpg"
-    await update.message.reply_photo(photo=photo_url, caption=text, parse_mode="HTML")
+    await update.message.reply_text(text, parse_mode="HTML")
 
-async def topgroups_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """TOP 10 GROUPS WHO GUESSED MOST CHARACTERS."""
-    pipeline = [
-        {"$group": {"_id": "$chat_id", "count": {"$sum": 1}}},
+async def gtop_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Global Character Leaderboard with Top Catcher (as requested)."""
+    # 1. Get Top 10 Characters by capture count
+    char_pipeline = [
+        {"$group": {"_id": "$char_id", "count": {"$sum": 1}}},
         {"$sort": {"count": -1}},
         {"$limit": 10}
     ]
-    cursor = captures_collection.aggregate(pipeline)
-    leaderboard_data = await cursor.to_list(length=10)
+    char_cursor = captures_collection.aggregate(char_pipeline)
     
-    leaderboard_message = "<b>TOP 10 GROUPS WHO GUESSED MOST CHARACTERS</b>\n\n"
-    i = 1
-    for entry in leaderboard_data:
-        chat_id = entry["_id"]
-        count = entry["count"]
-        try:
-            chat = await context.bot.get_chat(chat_id)
-            group_name = html.escape(chat.title or "Unknown")
-        except:
-            group_name = "Unknown Group"
-            
-        if len(group_name) > 10:
-            group_name = group_name[:15] + '...'
-            
-        leaderboard_message += f'{i}. <b>{group_name}</b> ➾ <b>{count}</b>\n'
-        i += 1
+    text = "🌟 <b>Top Captured Characters Globally</b> 🌟\n\n"
+    c_idx = 1
+    async for c in char_cursor:
+        char_id = c["_id"]
+        char_data = await characters_collection.find_one({"id": char_id})
+        if not char_data:
+            char_data = await characters_collection.find_one({"id": str(int(char_id)) if char_id.isdigit() else char_id})
+            if not char_data: continue
+
+        # 2. Find the Top Catcher for this character
+        user_win_pipeline = [
+            {"$match": {"char_id": char_id}},
+            {"$group": {"_id": "$user_id", "count": {"$sum": 1}}},
+            {"$sort": {"count": -1}},
+            {"$limit": 1}
+        ]
+        user_win_cursor = captures_collection.aggregate(user_win_pipeline)
+        top_user_text = "<i>N/A</i>"
+        async for uw in user_win_cursor:
+            u_id = uw["_id"]
+            u_data = await users_collection.find_one({"id": u_id})
+            u_name_val = u_data.get('name', 'Unknown') if u_data else "Unknown"
+            u_mention = f"<a href='tg://user?id={u_id}'>{escape_markdown(u_name_val)}</a>"
+            top_user_text = f"{u_mention} (ID: <code>{u_id}</code>) x{uw['count']}"
         
-    from bot.config import PHOTO_URL
-    photo_url = random.choice(PHOTO_URL) if PHOTO_URL else "https://telegra.ph/file/b925c3985f0f325e62e17.jpg"
-    await update.message.reply_photo(photo=photo_url, caption=leaderboard_message, parse_mode='HTML')
+        text += f"<b>{c_idx}.</b> {escape_markdown(char_data['name'])} (ID: <code>{char_id}</code>) — {c['count']} grabs\n"
+        text += f"   ﹂ 🏆 Top Catcher: {top_user_text}\n\n"
+        c_idx += 1
+
+    await update.message.reply_text(text, parse_mode="HTML")
 
 async def fav_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """/fav <ID> to set favorite waifu."""
@@ -397,7 +391,7 @@ async def fav_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Normalize all owned IDs for checking
     waifus_list = user_data["waifus"]
-    normalized_owned = {str(int(wid)) if str(wid).isdigit() else wid for wid in waifus_list}
+    normalized_owned = {str(int(wid)) if wid.isdigit() else wid for wid in waifus_list}
     
     if norm_input not in normalized_owned:
         await update.message.reply_text(f"❌ You don't own waifu ID {input_id}!")
@@ -416,50 +410,8 @@ async def fav_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
         
     actual_id = char_data['id']
-    
-    keyboard = [
-        [InlineKeyboardButton("✅ Yes", callback_data=f"fav_yes_{actual_id}"), InlineKeyboardButton("❌ No", callback_data="fav_no")]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    
-    text = f"💖 Do you want to set <b>{escape_markdown(char_data['name'])}</b> as your favorite?"
-    
-    try:
-        file_type = char_data.get('file_type', 'photo')
-        if file_type == 'video':
-            await update.message.reply_video(video=char_data['file_id'], caption=text, parse_mode="HTML", reply_markup=reply_markup)
-        elif file_type == 'document':
-            await update.message.reply_document(document=char_data['file_id'], caption=text, parse_mode="HTML", reply_markup=reply_markup)
-        else:
-            await update.message.reply_photo(photo=char_data['file_id'], caption=text, parse_mode="HTML", reply_markup=reply_markup)
-    except Exception as e:
-        await update.message.reply_text(text, parse_mode="HTML", reply_markup=reply_markup)
-
-async def fav_callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handle /fav inline buttons."""
-    query = update.callback_query
-    data = query.data
-    user = query.from_user
-
-    if not data.startswith("fav_"):
-        return
-        
-    action = data.split("_")[1]
-    
-    if action == "no":
-        await query.message.edit_reply_markup(reply_markup=None)
-        await query.answer("Favorite change cancelled.")
-        return
-        
-    if action == "yes":
-        actual_id = data.split("_")[2]
-        await users_collection.update_one({"id": user.id}, {"$set": {"favorite": actual_id}})
-        
-        char_data = await characters_collection.find_one({"id": actual_id})
-        name = escape_markdown(char_data['name']) if char_data else "Unknown"
-        
-        await query.message.edit_caption(f"💖 Successfully set <b>{name}</b> as your favorite!", parse_mode="HTML", reply_markup=None)
-        await query.answer("Favorite updated!")
+    await users_collection.update_one({"id": user.id}, {"$set": {"favorite": actual_id}})
+    await update.message.reply_text(f"💖 Successfully set <b>{escape_markdown(char_data['name'])}</b> as your favorite!", parse_mode="HTML")
 
 async def check_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """/check <id or name> for detailed character stats and top owners."""
@@ -497,21 +449,16 @@ async def check_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     r_emoji = emoji_map.get(rarity, "💮")
     
     # Aggregate users who have this waifu to find top catchers and global count
-    search_ids = [char_id]
-    if str(char_id).isdigit():
-        search_ids.append(int(char_id))
-        
     pipeline = [
-        {"$match": {"waifus": {"$in": search_ids}}},
+        {"$match": {"waifus": char_id}},
         {"$project": {
             "name": 1,
-            "first_name": 1,
             "id": 1,
             "count": {
                 "$size": {
                     "$filter": {
                         "input": "$waifus",
-                        "cond": {"$in": ["$$this", search_ids]}
+                        "cond": {"$eq": ["$$this", char_id]}
                     }
                 }
             }
@@ -548,8 +495,8 @@ async def check_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     if len(top_catchers) > 0:
         for u in top_catchers:
-            uname = escape_markdown(u.get('name') or u.get('first_name') or 'Unknown')
-            uid = u.get('id') or u.get('_id', 'Unknown')
+            uname = escape_markdown(u.get('name', 'Unknown'))
+            uid = u.get('id', 'Unknown')
             ucount = u.get('count', 0)
             text += f"➥ <a href='tg://user?id={uid}'>{uname}</a> (<code>{uid}</code>) x{ucount}\n\n"
     else:
@@ -579,11 +526,8 @@ async def hclaim_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Support Chat Join Check
     if SUPPORT_CHAT_ID:
-        try:
-            member = await context.bot.get_chat_member(SUPPORT_CHAT_ID, user.id)
-            if member.status not in ["member", "administrator", "creator"]:
-                raise Exception("Not a member")
-        except Exception:
+        member = await context.bot.get_chat_member(SUPPORT_CHAT_ID, user.id)
+        if member.status in ["left", "kicked"]:
             from telegram import InlineKeyboardButton, InlineKeyboardMarkup
             keyboard = [[InlineKeyboardButton("🚀 JOIN SUPPORT CHAT", url=SUPPORT_CHAT_LINK)]]
             reply_markup = InlineKeyboardMarkup(keyboard)
