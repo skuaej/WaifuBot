@@ -2,7 +2,7 @@ import asyncio
 from telegram import Update
 from telegram.ext import ContextTypes
 from bot.database.mongo import users_collection, characters_collection, captures_collection
-from bot.modules.spawn import active_spawns
+from bot.modules.spawn import active_spawns, despawn_tasks
 from bot.utils.spam import is_spammer
 from bot.utils.formatters import generate_success_message
 
@@ -80,6 +80,11 @@ async def capture_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if is_correct:
         # Correct guess! Prevent multiple winners by popping immediately.
         char_data = active_spawns.pop(chat_id)
+        
+        # Cancel despawn timer
+        if chat_id in despawn_tasks:
+            despawn_tasks[chat_id].cancel()
+            del despawn_tasks[chat_id]
         
 
         # Update user in DB

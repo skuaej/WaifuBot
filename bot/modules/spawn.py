@@ -7,6 +7,28 @@ from bot.utils.formatters import generate_spawn_message, escape_markdown
 
 # In-memory store for active spawns {chat_id: character_doc}
 active_spawns = {}
+# Dictionary to store despawn tasks: {chat_id: asyncio.Task}
+despawn_tasks = {}
+
+async def despawn_timer(chat_id: int, context: ContextTypes.DEFAULT_TYPE):
+    """Wait for 5 minutes and remove the active character if not caught."""
+    await asyncio.sleep(300) # 5 minutes
+    
+    if chat_id in active_spawns:
+        character = active_spawns.pop(chat_id)
+        # Delete original spawn message
+        try:
+            await context.bot.delete_message(chat_id, character['spawn_message_id'])
+        except Exception:
+            pass
+            
+        # Notify that character ran away
+        text = f"The character <b>{character['name']}</b> of <b>{character['anime']}</b> has run away!"
+        await context.bot.send_message(chat_id, text, parse_mode="HTML")
+        
+        # Clean up task
+        if chat_id in despawn_tasks:
+            del despawn_tasks[chat_id]
 
 
 async def spawn_character(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -43,9 +65,17 @@ async def spawn_character(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode="HTML"
         )
 
-    # Register active spawn
+    # Register active spawn and start despawn timer
     character['spawn_message_id'] = message.message_id
     active_spawns[chat_id] = character
+    
+    # Cancel existing task if any
+    if chat_id in despawn_tasks:
+        despawn_tasks[chat_id].cancel()
+        
+    # Start new despawn task
+    task = asyncio.create_task(despawn_timer(chat_id, context))
+    despawn_tasks[chat_id] = task
     
 
 async def group_message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):

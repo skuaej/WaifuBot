@@ -236,10 +236,15 @@ async def forward_save_handler(update: Update, context: ContextTypes.DEFAULT_TYP
 
     print(f"[AUTO-SAVE] Triggered! Chat: {message.chat.type} | From: {message.from_user.id if message.from_user else 'None'} | Has photo: {bool(message.photo)} | Has caption: {bool(message.caption)}")
 
-    # Only work for the owner
-    if not message.from_user or message.from_user.id != OWNER_ID:
-        print(f"[AUTO-SAVE] Skipped - not owner")
+    # Only work for the owner or sudos with upload power
+    if not message.from_user:
         return
+    
+    user_id = message.from_user.id
+    if user_id != OWNER_ID:
+        if not await has_power(user_id, "upload"):
+            print(f"[AUTO-SAVE] Skipped - not owner and no sudo upload power")
+            return
 
     # Must have media
     file_type = "photo"
@@ -256,6 +261,22 @@ async def forward_save_handler(update: Update, context: ContextTypes.DEFAULT_TYP
     if not file_id:
         print(f"[AUTO-SAVE] Skipped - no media")
         return
+
+    # Extract file_unique_id for duplicate check
+    file_unique_id = None
+    if message.photo:
+        file_unique_id = message.photo[-1].file_unique_id
+    elif message.video:
+        file_unique_id = message.video.file_unique_id
+    elif message.document:
+        file_unique_id = message.document.file_unique_id
+
+    # Check for duplicates
+    if file_unique_id:
+        existing = await characters_collection.find_one({"file_unique_id": file_unique_id})
+        if existing:
+            await message.reply_text(f"⚠️ <b>Duplicate Detected!</b>\nThis image is already in the database as: <b>{existing['name']}</b> (ID: {existing['id']})", parse_mode="HTML")
+            return
 
     # Must have a caption
     caption = message.caption
@@ -311,6 +332,7 @@ async def forward_save_handler(update: Update, context: ContextTypes.DEFAULT_TYP
         "anime": anime,
         "rarity": final_rarity,
         "file_id": file_id,
+        "file_unique_id": file_unique_id,
         "file_type": file_type
     }
 
@@ -361,6 +383,22 @@ async def channel_post_handler(update: Update, context: ContextTypes.DEFAULT_TYP
         print("DEBUG: No media found in message.")
         return
 
+    # Extract file_unique_id for duplicate check
+    file_unique_id = None
+    if message.photo:
+        file_unique_id = message.photo[-1].file_unique_id
+    elif message.video:
+        file_unique_id = message.video.file_unique_id
+    elif message.document:
+        file_unique_id = message.document.file_unique_id
+
+    # Check for duplicates
+    if file_unique_id:
+        existing = await characters_collection.find_one({"file_unique_id": file_unique_id})
+        if existing:
+            print(f"DEBUG: Duplicate found in channel post. ID: {existing['id']}")
+            return
+
     caption = message.caption
     print(f"DEBUG: Caption received: {repr(caption)}")
 
@@ -404,6 +442,7 @@ async def channel_post_handler(update: Update, context: ContextTypes.DEFAULT_TYP
             "anime": anime,
             "rarity": final_rarity,
             "file_id": file_id,
+            "file_unique_id": file_unique_id,
             "file_type": file_type
         }
 
@@ -476,15 +515,26 @@ async def upload_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
             else:
                 rarity = "Mystical"
     
+    file_unique_id = None
     file_type = "photo"
     if message.reply_to_message.photo:
         file_id = message.reply_to_message.photo[-1].file_id
+        file_unique_id = message.reply_to_message.photo[-1].file_unique_id
     elif message.reply_to_message.video:
         file_id = message.reply_to_message.video.file_id
+        file_unique_id = message.reply_to_message.video.file_unique_id
         file_type = "video"
     elif message.reply_to_message.document:
         file_id = message.reply_to_message.document.file_id
+        file_unique_id = message.reply_to_message.document.file_unique_id
         file_type = "document"
+
+    # Check for duplicates
+    if file_unique_id:
+        existing = await characters_collection.find_one({"file_unique_id": file_unique_id})
+        if existing:
+            await message.reply_text(f"⚠️ <b>Duplicate Detected!</b>\nThis image is already in the database as: <b>{existing['name']}</b> (ID: {existing['id']})", parse_mode="HTML")
+            return
 
     final_rarity = RARITY_MAP.get(rarity, rarity)
     rem_emoji = RARITY_EMOJI.get(final_rarity, "💮")
@@ -507,6 +557,7 @@ async def upload_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "anime": anime,
         "rarity": final_rarity,
         "file_id": file_id,
+        "file_unique_id": file_unique_id,
         "file_type": file_type
     }
     if char_type:
