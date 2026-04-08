@@ -133,9 +133,6 @@ async def inline_query(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # BATCH STATS FETCHING (Crucial for performance)
     results = []
     if characters:
-        me = await context.bot.get_me()
-        bot_username = me.username
-        
         seen = set()
         for char in characters:
             char_id = str(char.get('id', 'N/A'))
@@ -175,39 +172,31 @@ async def inline_query(update: Update, context: ContextTypes.DEFAULT_TYPE):
             title_text = f"[{r_emoji}] {name}{ownership_tag}"
             desc_text = f"ID: {char_id} • {anime} • {rarity}"
 
-            # Add Update button (Admins can use it)
-            keyboard = [[InlineKeyboardButton("Update Character", url=f"https://t.me/{bot_username}?start=upd_{char_id}")]]
-            reply_markup = InlineKeyboardMarkup(keyboard)
-
             if file_id:
                 try:
                     if file_type == 'photo':
                         results.append(InlineQueryResultCachedPhoto(
                             id=res_id, photo_file_id=file_id, 
                             title=title_text, description=desc_text,
-                            caption=caption, parse_mode="HTML",
-                            reply_markup=reply_markup
+                            caption=caption, parse_mode="HTML"
                         ))
                     elif file_type == 'video':
                         results.append(InlineQueryResultCachedVideo(
                             id=res_id, video_file_id=file_id, 
                             title=title_text, description=desc_text,
-                            caption=caption, parse_mode="HTML",
-                            reply_markup=reply_markup
+                            caption=caption, parse_mode="HTML"
                         ))
                     elif file_type == 'animation':
                         results.append(InlineQueryResultCachedMpeg4Gif(
                             id=res_id, mpeg4_file_id=file_id, 
                             title=title_text, description=desc_text,
-                            caption=caption, parse_mode="HTML",
-                            reply_markup=reply_markup
+                            caption=caption, parse_mode="HTML"
                         ))
                     elif file_type == 'document':
                         results.append(InlineQueryResultCachedDocument(
                             id=res_id, document_file_id=file_id, 
                             title=title_text, description=desc_text,
-                            caption=caption, parse_mode="HTML",
-                            reply_markup=reply_markup
+                            caption=caption, parse_mode="HTML"
                         ))
                     continue
                 except Exception as e:
@@ -217,8 +206,7 @@ async def inline_query(update: Update, context: ContextTypes.DEFAULT_TYPE):
             results.append(InlineQueryResultArticle(
                 id=res_id, title=f"{title_text} [TEXT]",
                 description=desc_text,
-                input_message_content=InputTextMessageContent(caption, parse_mode="HTML"),
-                reply_markup=reply_markup
+                input_message_content=InputTextMessageContent(caption, parse_mode="HTML")
             ))
 
     cache_time = 300 if search_harem else 10 # Increased from 1s to 10s to reduce Koyeb load

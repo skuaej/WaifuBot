@@ -17,6 +17,14 @@ async def despawn_timer(chat_id: int, context: ContextTypes.DEFAULT_TYPE):
     if chat_id in active_spawns:
         char = active_spawns.pop(chat_id, None)
         if char:
+            # Delete Original Spawn Message
+            try:
+                msg_id = char.get('spawn_message_id')
+                if msg_id:
+                    await context.bot.delete_message(chat_id=chat_id, message_id=msg_id)
+            except Exception:
+                pass
+
             try:
                 await context.bot.send_message(
                     chat_id=chat_id,
@@ -64,6 +72,7 @@ async def spawn_character(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
     # Register active spawn
+    character['spawn_message_id'] = message.message_id
     active_spawns[chat_id] = character
     
     # Start despawn timer task

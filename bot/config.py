@@ -34,9 +34,9 @@ except ValueError:
 
 # How long a character stays before despawning (in seconds)
 try:
-    SPAWN_DURATION = int(os.getenv("SPAWN_DURATION", "3600"))
+    SPAWN_DURATION = int(os.getenv("SPAWN_DURATION", "900"))
 except ValueError:
-    SPAWN_DURATION = 3600
+    SPAWN_DURATION = 900
 
 # Default images for bot responses
 PHOTO_URL = [
