@@ -38,8 +38,17 @@ from bot.modules.search import inline_query, search_cmd
 from bot.modules.gift import cgrant_cmd
 from bot.modules.help import help_cmd, help_callback_handler
 from bot.modules.smash import smash_cmd, cancel_cmd, game_callback_handler
-from bot.utils.spam import is_spammer
 from bot.web import start_server
+
+# List of all commands handled by this bot (lower case)
+BOT_COMMANDS = {
+    "start", "help", "enable", "grab", "guess", "catch", "hug",
+    "harem", "profile", "top", "gtop", "todaygtop", "topgroups", "fav", "hmode", "check",
+    "trade", "accept", "reset", "gift", "balance", "bonus", "transfer", "smash", "cancel",
+    "upload", "delete", "broadcast", "changetime", "timepower", "spwanglobal", "addsudo", "sudo", "resudo",
+    "stats", "total", "ping", "pin", "pinf", "cgrant", "sudolist", "transfercheck", "bang", "unbang", "update",
+    "hclaim", "claim", "search"
+}
 
 # Logging setup
 logging.basicConfig(
@@ -73,28 +82,33 @@ async def check_spam_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
     if spam_status > 0:
         # User is blocked. Check if it's an allowed command.
         msg = update.effective_message
-        text = ""
         if msg:
             text = (msg.text or msg.caption or "").strip()
             
-        # 1. ALLOW /profile and /start (and their buttons)
-        allowed_cmds = ("/profile", "/start")
-        if text.startswith(allowed_cmds):
-            return # Let them through
-            
-        # 2. Block and NOTIFY for other commands
-        if text.startswith("/"):
-            remaining = await get_block_remaining(user_id)
-            if remaining > 0:
-                logging.info(f"🚫 BLOCKED COMMAND (FEEDBACK): User {user_id} tried '{text[:20]}...'")
-                try:
-                    await update.effective_chat.send_message(
-                        f"🚫 <b>YOU ARE BLOCKED!</b> (Time: {remaining // 60}m {remaining % 60}s)\n"
-                        f"Use /profile to check your status.",
-                        parse_mode="HTML"
-                    )
-                except: pass
-            raise ApplicationHandlerStop()
+            if text.startswith("/"):
+                # Extract command name: /grab@botname -> grab
+                command_part = text.split()[0].split('@')[0][1:].lower()
+
+                # 1. ALLOW /profile and /start (and their variants)
+                if command_part in ("profile", "start"):
+                    return # Let them through
+                
+                # 2. Block and NOTIFY ONLY if it's one of OUR commands
+                if command_part in BOT_COMMANDS:
+                    remaining = await get_block_remaining(user_id)
+                    if remaining > 0:
+                        logging.info(f"🚫 BLOCKED COMMAND (FEEDBACK): User {user_id} tried '{text[:20]}...'")
+                        try:
+                            await update.effective_chat.send_message(
+                                f"🚫 <b>YOU ARE BLOCKED!</b> (Time: {remaining // 60}m {remaining % 60}s)\n"
+                                f"Use /profile to check your status.",
+                                parse_mode="HTML"
+                            )
+                        except: pass
+                    raise ApplicationHandlerStop()
+                
+                # 3. If it's another command (not ours), let it pass silently
+                return
             
         # 3. Block buttons if they aren't profile-related
         if update.callback_query:
