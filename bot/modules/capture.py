@@ -15,6 +15,21 @@ async def capture_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Usage: /grab Name or /guess Name")
         return
 
+    # Daily Catch Limit (40 per day)
+    from datetime import datetime, timezone
+    from bot.database.mongo import captures_collection
+    now = datetime.now(timezone.utc)
+    start_of_day = datetime(now.year, now.month, now.day, tzinfo=timezone.utc)
+    
+    daily_count = await captures_collection.count_documents({
+        "user_id": user.id,
+        "timestamp": {"$gte": start_of_day}
+    })
+    
+    if daily_count >= 40:
+        await update.message.reply_text("❌ <b>You have reached your daily catch limit (40/day)!</b>\nCome back tomorrow! OwO", parse_mode="HTML")
+        return
+
     # Anti-spam
     from bot.utils.spam import get_block_remaining
     remaining = await get_block_remaining(user.id)

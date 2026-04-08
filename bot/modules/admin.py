@@ -1,4 +1,4 @@
-import time, html
+import time, html, re
 from bot.database.mongo import db
 
 from telegram import Update
@@ -970,7 +970,54 @@ async def update_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     log_text = (
         f"📝 <b>Character Updated</b>\n"
         f"By: {update.effective_user.first_name} (<code>{update.effective_user.id}</code>)\n"
-        f"ID: <code>{char_id}</code>\n"
-        f"Fields: {list(update_data.keys()) or ['Media Only']}"
+        f"ID: <code>{char_id}</code>\n\n"
+        f"<b>New Details:</b>\n"
+        f"Name: {current_char.get('name')}\n"
+        f"Anime: {current_char.get('anime')}\n"
+        f"Rarity: {current_char.get('rarity')}"
     )
     await send_log(context, log_text, file_id=file_id, file_type=file_type)
+
+async def group_status_update_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Log when the bot is added to or removed from a group."""
+    if not update.my_chat_member:
+        return
+        
+    old_status = update.my_chat_member.old_chat_member.status
+    new_status = update.my_chat_member.new_chat_member.status
+    chat = update.my_chat_member.chat
+    user = update.my_chat_member.from_user
+    
+    if old_status in ["left", "kicked"] and new_status in ["member", "administrator"]:
+        # Bot was added
+        log_text = (
+            f"➕ <b>Bot Added to Group</b>\n"
+            f"<b>Group:</b> {chat.title} (<code>{chat.id}</code>)\n"
+            f"<b>By:</b> {user.first_name} (<code>{user.id}</code>)"
+        )
+        await send_log(context, log_text)
+        
+        # Initialize group in DB
+        from bot.database.mongo import groups_collection
+        await groups_collection.update_one(
+            {"id": chat.id},
+            {"$set": {"title": chat.title, "active": True}},
+            upsert=True
+        )
+        
+    elif old_status in ["member", "administrator"] and new_status in ["left", "kicked"]:
+        # Bot was removed
+        log_text = (
+            f"➖ <b>Bot Removed from Group</b>\n"
+            f"<b>Group:</b> {chat.title} (<code>{chat.id}</code>)\n"
+            f"<b>By:</b> {user.first_name} (<code>{user.id}</code>)"
+        )
+        await send_log(context, log_text)
+        
+        # Deactivate group in DB
+        from bot.database.mongo import groups_collection
+        await groups_collection.update_one(
+            {"id": chat.id},
+            {"$set": {"active": False}}
+        )
+

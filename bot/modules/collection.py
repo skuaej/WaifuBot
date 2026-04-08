@@ -600,10 +600,7 @@ async def hclaim_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         last_claim = user_data.get("last_hclaim", 0)
         now = time.time()
         if now - last_claim < 86400:
-            remaining = int(86400 - (now - last_claim))
-            hours = remaining // 3600
-            mins = (remaining % 3600) // 60
-            await update.message.reply_text(f"⏳ You can claim again in {hours}h {mins}m.")
+            await update.message.reply_text("⏳ <b>You already claimed today!</b>\nCome back after next 24 hours.", parse_mode="HTML")
             return
 
     # Pick a random character from claimable rarities
@@ -669,3 +666,96 @@ async def hclaim_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Log character issue
         from bot.modules.admin import send_log
         await send_log(context, f"⚠️ <b>Hclaim Media Error</b>\nChar: {char['name']} (ID: {char_id})\nError: <code>{e}</code>")
+
+async def todaygtop_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """GLOBAL TOP 10 USERS WITH MOST CHARACTERS CAUGHT TODAY."""
+    from datetime import datetime, timezone
+    now = datetime.now(timezone.utc)
+    start_of_day = datetime(now.year, now.month, now.day, tzinfo=timezone.utc)
+    
+    pipeline = [
+        {"$match": {"timestamp": {"$gte": start_of_day}}},
+        {"$group": {"_id": "$user_id", "count": {"$sum": 1}}},
+        {"$sort": {"count": -1}},
+        {"$limit": 10}
+    ]
+    
+    leaderboard_data = await captures_collection.aggregate(pipeline).to_list(length=10)
+    
+    if not leaderboard_data:
+        await update.message.reply_text("❌ No characters caught globally today yet!")
+        return
+        
+    text = "<b>GLOBAL TOP 10 CATCHERS (TODAY)</b>\n\n"
+    idx = 1
+    for entry in leaderboard_data:
+        uid = entry["_id"]
+        count = entry["count"]
+        
+        user_data = await users_collection.find_one({"id": uid})
+        if not user_data:
+             user_data = await users_collection.find_one({"id": str(uid)})
+             
+        name = "Unknown"
+        if user_data:
+            name = user_data.get("name") or user_data.get("first_name") or "Unknown"
+        
+        name = html.escape(name)
+        if len(name) > 15:
+            name = name[:15] + "..."
+            
+        text += f"{idx}. <a href='tg://user?id={uid}'><b>{name}</b></a> (<code>{uid}</code>) ➾ <b>{count}</b>\n"
+        idx += 1
+        
+    from bot.config import PHOTO_URL
+    import random
+    photo_url = random.choice(PHOTO_URL) if PHOTO_URL else "https://telegra.ph/file/b925c3985f0f325e62e17.jpg"
+    await update.message.reply_photo(photo=photo_url, caption=text, parse_mode="HTML")
+
+async def gtop_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """TOP 10 USERS WHO GUESSED MOST CHARACTERS IN THE CURRENT GROUP."""
+    chat_id = update.effective_chat.id
+    if update.effective_chat.type == "private":
+        await update.message.reply_text("This command only works in groups.")
+        return
+
+    # Aggregation to find top users in this group
+    pipeline = [
+        {"$match": {"chat_id": chat_id}},
+        {"$group": {"_id": "$user_id", "count": {"$sum": 1}}},
+        {"$sort": {"count": -1}},
+        {"$limit": 10}
+    ]
+    
+    leaderboard_data = await captures_collection.aggregate(pipeline).to_list(length=10)
+    
+    if not leaderboard_data:
+        await update.message.reply_text("❌ No captures found in this group.")
+        return
+        
+    text = f"<b>TOP 10 CATCHERS IN {html.escape(update.effective_chat.title)}</b>\n\n"
+    idx = 1
+    for entry in leaderboard_data:
+        uid = entry["_id"]
+        count = entry["count"]
+        
+        # Fetch name from users_collection
+        user_data = await users_collection.find_one({"id": uid})
+        if not user_data:
+             user_data = await users_collection.find_one({"id": str(uid)})
+             
+        name = "Unknown"
+        if user_data:
+            name = user_data.get("name") or user_data.get("first_name") or "Unknown"
+        
+        name = html.escape(name)
+        if len(name) > 15:
+            name = name[:15] + "..."
+            
+        text += f"{idx}. <a href='tg://user?id={uid}'><b>{name}</b></a> (<code>{uid}</code>) ➾ <b>{count}</b>\n"
+        idx += 1
+        
+    from bot.config import PHOTO_URL
+    import random
+    photo_url = random.choice(PHOTO_URL) if PHOTO_URL else "https://telegra.ph/file/b925c3985f0f325e62e17.jpg"
+    await update.message.reply_photo(photo=photo_url, caption=text, parse_mode="HTML")

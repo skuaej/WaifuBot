@@ -9,7 +9,8 @@ from telegram.ext import (
     TypeHandler,
     filters,
     ContextTypes,
-    ApplicationHandlerStop
+    ApplicationHandlerStop,
+    ChatMemberHandler
 )
 
 from bot.modules.admin import (
@@ -17,17 +18,18 @@ from bot.modules.admin import (
     channel_post_handler, forward_save_handler, addsudo_cmd, 
     resudo_cmd, sudo_callback_handler, stats_cmd, send_log, 
     ping_cmd, enable_cmd, spwanglobal_cmd, sudolist_cmd,
-    transfer_cmd, transfercheck_cmd, bang_cmd, unbang_cmd, update_cmd
+    transfer_cmd, transfercheck_cmd, bang_cmd, unbang_cmd, update_cmd,
+    group_status_update_handler
 )
 from bot.utils.formatters import escape_markdown
-from bot.config import BOT_TOKEN, LOG_CHAT_ID
+from bot.config import BOT_TOKEN, LOG_CHAT_ID, PHOTO_URL, SUPPORT_CHAT_LINK
 from bot.database.mongo import init_db
 from bot.modules.spawn import group_message_handler
 from bot.modules.capture import capture_cmd
 from bot.modules.collection import (
     harem_cmd, profile_cmd, top_cmd, fav_cmd, 
     check_cmd, hmode_cmd, collection_callback_handler, hclaim_cmd, fav_callback_handler,
-    topgroups_cmd
+    topgroups_cmd, gtop_cmd, todaygtop_cmd
 )
 from bot.modules.trade import trade_cmd, gift_cmd, accept_cmd, reset_cmd, gift_callback_handler, trade_callback_handler
 from bot.modules.economy import balance_cmd, bonus_cmd, transfer_cmd
@@ -119,12 +121,7 @@ async def start_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Intro message with inline group join buttons."""
     import random
     from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-    from bot.config import BOT_TOKEN, SUPPORT_CHAT_LINK
 
-    PHOTO_URL = [
-        "https://telegra.ph/file/b925c3985f0f325e62e17.jpg",
-        "https://telegra.ph/file/4211fb191383d895dab9d.jpg"
-    ]
     photo_url = random.choice(PHOTO_URL)
     me = await context.bot.get_me()
     
@@ -184,6 +181,8 @@ def main():
     application.add_handler(CommandHandler("harem", harem_cmd))
     application.add_handler(CommandHandler("profile", profile_cmd))
     application.add_handler(CommandHandler("top", top_cmd))
+    application.add_handler(CommandHandler("gtop", gtop_cmd))
+    application.add_handler(CommandHandler("todaygtop", todaygtop_cmd))
     application.add_handler(CommandHandler("TopGroups", topgroups_cmd))
     application.add_handler(CommandHandler("fav", fav_cmd))
     application.add_handler(CommandHandler("hmode", hmode_cmd))
@@ -248,6 +247,9 @@ def main():
     
     # Standard Search Handler
     application.add_handler(CommandHandler("search", search_cmd))
+    
+    # Group Status Update Handler (Join/Leave Notices)
+    application.add_handler(ChatMemberHandler(group_status_update_handler, ChatMemberHandler.MY_CHAT_MEMBER))
 
     # Start health check server for Koyeb
     start_server()

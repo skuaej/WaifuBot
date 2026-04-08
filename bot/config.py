@@ -37,3 +37,9 @@ try:
     SPAWN_DURATION = int(os.getenv("SPAWN_DURATION", "3600"))
 except ValueError:
     SPAWN_DURATION = 3600
+
+# Default images for bot responses
+PHOTO_URL = [
+    "https://telegra.ph/file/b925c3985f0f325e62e17.jpg",
+    "https://telegra.ph/file/4211fb191383d895dab9d.jpg"
+]
