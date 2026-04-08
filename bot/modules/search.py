@@ -133,28 +133,9 @@ async def inline_query(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # BATCH STATS FETCHING (Crucial for performance)
     results = []
     if characters:
-        all_res_ids = []
-        for c in characters:
-            cid = str(c.get('id'))
-            all_res_ids.append(cid)
-            if cid.isdigit():
-                all_res_ids.append(int(cid))
+        me = await context.bot.get_me()
+        bot_username = me.username
         
-        # Single aggregation to get counts for all characters in results (Optimized)
-        stats_pipeline = [
-            {"$match": {"waifus": {"$in": all_res_ids}}},
-            {"$project": {"waifus": 1}},
-            {"$unwind": "$waifus"},
-            {"$match": {"waifus": {"$in": all_res_ids}}},
-            {"$group": {"_id": "$waifus", "total": {"$sum": 1}}}
-        ]
-        
-        # Create a mapping of ID -> Total Count
-        id_stats = {}
-        async for stat in users_collection.aggregate(stats_pipeline, allowDiskUse=True):
-            sid = str(stat["_id"])
-            id_stats[sid] = id_stats.get(sid, 0) + stat["total"]
-
         seen = set()
         for char in characters:
             char_id = str(char.get('id', 'N/A'))
@@ -176,8 +157,8 @@ async def inline_query(update: Update, context: ContextTypes.DEFAULT_TYPE):
             }
             r_emoji = emoji_map.get(rarity, "💮")
             
-            # Use batch stats
-            global_total = id_stats.get(norm_id, 0)
+            # Use stored caught_count for speed
+            global_total = char.get('caught_count', 0)
             
             caption = (
                 f"OwO! Check out this character!{ownership_tag}\n\n"
@@ -194,31 +175,39 @@ async def inline_query(update: Update, context: ContextTypes.DEFAULT_TYPE):
             title_text = f"[{r_emoji}] {name}{ownership_tag}"
             desc_text = f"ID: {char_id} • {anime} • {rarity}"
 
+            # Add Update button (Admins can use it)
+            keyboard = [[InlineKeyboardButton("Update Character", url=f"https://t.me/{bot_username}?start=upd_{char_id}")]]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+
             if file_id:
                 try:
                     if file_type == 'photo':
                         results.append(InlineQueryResultCachedPhoto(
                             id=res_id, photo_file_id=file_id, 
                             title=title_text, description=desc_text,
-                            caption=caption, parse_mode="HTML"
+                            caption=caption, parse_mode="HTML",
+                            reply_markup=reply_markup
                         ))
                     elif file_type == 'video':
                         results.append(InlineQueryResultCachedVideo(
                             id=res_id, video_file_id=file_id, 
                             title=title_text, description=desc_text,
-                            caption=caption, parse_mode="HTML"
+                            caption=caption, parse_mode="HTML",
+                            reply_markup=reply_markup
                         ))
                     elif file_type == 'animation':
                         results.append(InlineQueryResultCachedMpeg4Gif(
                             id=res_id, mpeg4_file_id=file_id, 
                             title=title_text, description=desc_text,
-                            caption=caption, parse_mode="HTML"
+                            caption=caption, parse_mode="HTML",
+                            reply_markup=reply_markup
                         ))
                     elif file_type == 'document':
                         results.append(InlineQueryResultCachedDocument(
                             id=res_id, document_file_id=file_id, 
                             title=title_text, description=desc_text,
-                            caption=caption, parse_mode="HTML"
+                            caption=caption, parse_mode="HTML",
+                            reply_markup=reply_markup
                         ))
                     continue
                 except Exception as e:
@@ -228,7 +217,8 @@ async def inline_query(update: Update, context: ContextTypes.DEFAULT_TYPE):
             results.append(InlineQueryResultArticle(
                 id=res_id, title=f"{title_text} [TEXT]",
                 description=desc_text,
-                input_message_content=InputTextMessageContent(caption, parse_mode="HTML")
+                input_message_content=InputTextMessageContent(caption, parse_mode="HTML"),
+                reply_markup=reply_markup
             ))
 
     cache_time = 300 if search_harem else 10 # Increased from 1s to 10s to reduce Koyeb load

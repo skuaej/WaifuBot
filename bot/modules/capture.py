@@ -1,7 +1,7 @@
 import asyncio
 from telegram import Update
 from telegram.ext import ContextTypes
-from bot.database.mongo import users_collection
+from bot.database.mongo import users_collection, characters_collection, captures_collection
 from bot.modules.spawn import active_spawns, despawn_tasks
 from bot.utils.spam import is_spammer
 from bot.utils.formatters import generate_success_message
@@ -17,7 +17,6 @@ async def capture_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Daily Catch Limit (40 per day)
     from datetime import datetime, timezone
-    from bot.database.mongo import captures_collection
     now = datetime.now(timezone.utc)
     start_of_day = datetime(now.year, now.month, now.day, tzinfo=timezone.utc)
     
@@ -104,6 +103,10 @@ async def capture_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     "$inc": {"coins": 100} # Award 100 coins for catching
                 },
                 upsert=True
+            ),
+            characters_collection.update_one(
+                {"id": normalized_id},
+                {"$inc": {"caught_count": 1}}
             ),
             captures_collection.insert_one({
                 "user_id": user.id,

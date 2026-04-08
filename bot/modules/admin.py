@@ -107,9 +107,14 @@ def _build_sudo_keyboard(sudo_id: int, powers: list):
     from telegram import InlineKeyboardButton, InlineKeyboardMarkup
     upload_status = "✅" if "upload" in powers else "❌"
     delete_status = "✅" if "delete" in powers else "❌"
+    update_status = "✅" if "update" in powers else "❌"
+    bang_status = "✅" if "bang" in powers else "❌"
+    
     keyboard = [
         [InlineKeyboardButton(f"{upload_status} Upload Power", callback_data=f"sudo_toggle_{sudo_id}_upload")],
         [InlineKeyboardButton(f"{delete_status} Delete Power", callback_data=f"sudo_toggle_{sudo_id}_delete")],
+        [InlineKeyboardButton(f"{update_status} Update Power", callback_data=f"sudo_toggle_{sudo_id}_update")],
+        [InlineKeyboardButton(f"{bang_status} Ban Power", callback_data=f"sudo_toggle_{sudo_id}_bang")],
         [InlineKeyboardButton("🗑️ Remove Sudo", callback_data=f"sudo_remove_{sudo_id}")],
         [InlineKeyboardButton("✅ Done", callback_data="sudo_done")]
     ]
@@ -140,8 +145,8 @@ async def addsudo_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    await sudos_collection.insert_one({"user_id": sudo_id, "powers": ["upload", "delete"]})
-    keyboard = _build_sudo_keyboard(sudo_id, ["upload", "delete"])
+    await sudos_collection.insert_one({"user_id": sudo_id, "powers": ["upload", "delete", "update", "bang"]})
+    keyboard = _build_sudo_keyboard(sudo_id, ["upload", "delete", "update", "bang"])
     await update.message.reply_text(
         f"✅ User <code>{sudo_id}</code> added as sudo.\n⚙️ Manage powers:",
         parse_mode="HTML", reply_markup=keyboard
@@ -707,9 +712,9 @@ async def changetime_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
     try:
         new_frequency = int(context.args[0])
-        if new_frequency < 100:
+        if new_frequency < 70:
             if not await is_sudo(user_id):
-                await update.message.reply_text("The message frequency must be greater than or equal to 100.")
+                await update.message.reply_text("The message frequency must be greater than or equal to 70.")
                 return
     except ValueError:
         await update.message.reply_text("Please provide a valid positive integer.")
@@ -750,8 +755,11 @@ async def ping_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     db_latency = round((time.time() - db_start) * 1000, 2)
 
     # 3. System Metrics
-    cpu_usage = psutil.cpu_percent()
+    # CPU usage with an interval for accuracy
+    cpu_usage = psutil.cpu_percent(interval=0.5)
     ram = psutil.virtual_memory()
+    disk = psutil.disk_usage('/')
+    
     # psutil.Process() gives memory for the current process
     process = psutil.Process(os.getpid())
     ram_usage = process.memory_info().rss / (1024 * 1024) # MB
@@ -766,6 +774,7 @@ async def ping_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"<b>🗄️ DB Latency:</b> <code>{db_latency}ms</code>\n"
         f"<b>⚙️ CPU Usage:</b> <code>{cpu_usage}%</code>\n"
         f"<b>🧠 RAM Usage:</b> <code>{ram_usage:.2f}MB</code> (of {ram.total // (1024**2)}MB)\n"
+        f"<b>💽 Disk Usage:</b> <code>{disk.percent}%</code>\n"
         f"<b>⏰ Uptime:</b> <code>{uptime_str}</code>"
     )
 
@@ -898,8 +907,9 @@ async def transfercheck_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(f"❌ User <code>{target_id}</code> not found or has no collection.", parse_mode="HTML")
 
 async def bang_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """/bang <id> - Permanently ban a user (Owner only)."""
-    if not await check_owner(update):
+    """/bang <id> - Permanently ban a user (Owner/Sudo with ban power)."""
+    if not await check_admin(update, power="bang"):
+        return
         return
         
     if not context.args:
@@ -919,8 +929,9 @@ async def bang_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await send_log(context, f"🚫 <b>Global Ban</b>\nBy:Owner\nTarget: <code>{user_id}</code>")
 
 async def unbang_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """/unbang <id> - Remove permanent ban (Owner only)."""
-    if not await check_owner(update):
+    """/unbang <id> - Remove permanent ban (Owner/Sudo with ban power)."""
+    if not await check_admin(update, power="bang"):
+        return
         return
         
     if not context.args:
@@ -943,7 +954,7 @@ async def unbang_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def update_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """/update <id> [name] [series] [rarity] [type] - Update character metadata/image."""
-    if not await check_admin(update):
+    if not await check_admin(update, power="update"):
         return
         
     if not context.args:

@@ -138,9 +138,22 @@ async def start_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     if update.effective_chat.type == "private":
+        if context.args:
+            arg = context.args[0]
+            if arg.startswith("upd_"):
+                char_id = arg.split("_")[1]
+                await update.message.reply_text(
+                    f"📝 <b>Update Character {char_id}</b>\n\n"
+                    f"To update this character, use:\n"
+                    f"<code>/update {char_id} [name] [series] [rarity] [type]</code>\n\n"
+                    f"Or reply to a new image/video with <code>/update {char_id}</code>.",
+                    parse_mode="HTML"
+                )
+                return
+
         caption = (
             "***Heyyyy...***\n\n"
-            "***I am An Open Source Character Catcher Bot...​Add Me in Your group.. And I will send Random Characters After.. every 100 messages in Group... Use /guess to.. Collect that Characters in Your Collection.. and see Collection by using /Harem... So add in Your groups and Collect Your harem***"
+            "***I am An Open Source Character Catcher Bot...​Add Me in Your group.. And I will send Random Characters After.. every 70 messages in Group... Use /guess to.. Collect that Characters in Your Collection.. and see Collection by using /Harem... So add in Your groups and Collect Your harem***"
         )
         await update.message.reply_photo(photo=photo_url, caption=caption, reply_markup=reply_markup, parse_mode="markdown")
         await send_log(context, f"👤 <b>User Started Bot</b>\nUser: {update.effective_user.first_name} (<code>{update.effective_user.id}</code>)")
@@ -211,12 +224,12 @@ def main():
     application.add_handler(CommandHandler("upload", upload_cmd))
     application.add_handler(CommandHandler("delete", delete_cmd))
     application.add_handler(CommandHandler("broadcast", broadcast_cmd))
-    application.add_handler(CommandHandler("changetime", changetime_cmd))
+    application.add_handler(CommandHandler(["changetime", "timepower"], changetime_cmd))
     application.add_handler(CommandHandler("spwanglobal", spwanglobal_cmd))
-    application.add_handler(CommandHandler("addsudo", addsudo_cmd))
+    application.add_handler(CommandHandler(["addsudo", "sudo"], addsudo_cmd))
     application.add_handler(CommandHandler("resudo", resudo_cmd))
     application.add_handler(CommandHandler(["stats", "total"], stats_cmd))
-    application.add_handler(CommandHandler("ping", ping_cmd))
+    application.add_handler(CommandHandler(["ping", "pin", "pinf"], ping_cmd))
     application.add_handler(CommandHandler("cgrant", cgrant_cmd))
     application.add_handler(CommandHandler("sudolist", sudolist_cmd))
     application.add_handler(CommandHandler("transfer", transfer_cmd))
