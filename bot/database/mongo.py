@@ -26,6 +26,7 @@ async def init_db():
     
     await users_collection.create_index("id", unique=True)
     await users_collection.create_index("username")
+    await users_collection.create_index("waifus")  # Added to speed up global_total counts
     
     await groups_collection.create_index("id", unique=True)
     

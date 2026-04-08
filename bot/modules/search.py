@@ -33,13 +33,13 @@ async def inline_query(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query_text = update.inline_query.query.strip()
     user_id = update.inline_query.from_user.id
     
-    # ALWAYS fetch current user for global catch-tags
+    # Check if user exists in cache/memory if possible, otherwise DB
     caller_data = await users_collection.find_one({"id": user_id})
     if not caller_data:
         caller_data = await users_collection.find_one({"id": str(user_id)})
     
     caller_owned = set(caller_data.get("waifus", [])) if caller_data else set()
-    normalized_caller_owned = {str(int(wid)) if str(wid).isdigit() else str(wid) for wid in caller_owned}
+    normalized_caller_owned = {str(wid) for wid in caller_owned}
 
     # Harem search logic
     target_user_data = None
@@ -87,17 +87,20 @@ async def inline_query(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Filtration logic with robust ID handling
     search_filter = {}
     if query_text:
+        # Use a more efficient regex prefix search if possible, but keep partial match for now
+        # escape_markdown is not needed for regex, but re.escape is.
         regex = re.compile(re.escape(query_text), re.IGNORECASE)
-        or_filters = [{"name": regex}, {"anime": regex}]
+        or_filters = [
+            {"name": regex}, 
+            {"anime": regex}
+        ]
         
         # Smart ID lookup
         if query_text.isdigit():
-            clean_id = int(query_text)
+            clean_id = str(int(query_text)) # Normalize 001 -> 1
             or_filters.append({"id": clean_id})
-            or_filters.append({"id": str(clean_id)})
-        else:
-            or_filters.append({"id": regex})
-            
+            or_filters.append({"id": int(clean_id)})
+        
         search_filter["$or"] = or_filters
 
     if search_harem:
@@ -137,9 +140,10 @@ async def inline_query(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if cid.isdigit():
                 all_res_ids.append(int(cid))
         
-        # Single aggregation to get counts for all characters in results
+        # Single aggregation to get counts for all characters in results (Optimized)
         stats_pipeline = [
             {"$match": {"waifus": {"$in": all_res_ids}}},
+            {"$project": {"waifus": 1}},
             {"$unwind": "$waifus"},
             {"$match": {"waifus": {"$in": all_res_ids}}},
             {"$group": {"_id": "$waifus", "total": {"$sum": 1}}}
@@ -147,7 +151,7 @@ async def inline_query(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         # Create a mapping of ID -> Total Count
         id_stats = {}
-        async for stat in users_collection.aggregate(stats_pipeline):
+        async for stat in users_collection.aggregate(stats_pipeline, allowDiskUse=True):
             sid = str(stat["_id"])
             id_stats[sid] = id_stats.get(sid, 0) + stat["total"]
 
@@ -227,7 +231,7 @@ async def inline_query(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 input_message_content=InputTextMessageContent(caption, parse_mode="HTML")
             ))
 
-    cache_time = 300 if search_harem else 1  
+    cache_time = 300 if search_harem else 10 # Increased from 1s to 10s to reduce Koyeb load
     
     if not results:
         results.append(InlineQueryResultArticle(
