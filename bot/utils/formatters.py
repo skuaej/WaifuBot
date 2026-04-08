@@ -23,13 +23,27 @@ def generate_spawn_message(name: str, rarity: str) -> str:
         "ᴀᴅᴅ ᴛʜɪs ᴄʜᴀʀᴀᴄᴛᴇʀ ᴛᴏ ʏᴏᴜʀ ʜᴀʀᴇᴍ ᴜsɪɴɢ /catch or /hug [ɴᴀᴍᴇ]"
     )
 
-def generate_success_message(user_id: int, user_name: str, char_name: str, anime: str, rarity: str) -> str:
-    """Generate capture success message."""
+def generate_success_message(user_id: int, user_name: str, char_name: str, anime: str, rarity: str, user_in_anime: int, total_in_anime: int) -> str:
+    """Generate capture success message with new theme and anime stats."""
     mention = f"<a href='tg://user?id={user_id}'>{escape_markdown(user_name)}</a>"
+    
+    rarity_emojis = {
+        "Common": "🔵",
+        "Uncommon": "🟣",
+        "Rare": "🟠",
+        "Legendary": "🟡",
+        "Mystical": "💮",
+        "Divine": "⚜️",
+        "Crossverse": "⚡",
+        "Supreme": "🪞",
+        "Cataphract": "✨"
+    }
+    emoji = rarity_emojis.get(rarity, "🟡")
+
     return (
-        f"💖 <b>Congratulations {mention}!</b>\n\n"
-        f"You successfully captured: <b>{escape_markdown(char_name)}</b>\n"
-        f"<b>Anime:</b> {escape_markdown(anime)}\n"
-        f"<b>Rarity:</b> {rarity} 💠\n\n"
-        f"<i>View your newly caught character using /harem!</i>"
+        f"{mention} ʀᴇᴅɪʀᴇᴛ ᴛᴏ ᴘʀᴏꜰɪʟᴇ , ʏᴏᴜ ɢᴏᴛ ᴀ ɴᴇᴡ ᴄʜᴀʀᴀᴄᴛᴇʀ!\n\n"
+        f"🫧 ɴᴀᴍᴇ: {escape_markdown(char_name)} [💠]\n"
+        f"{emoji} 𝙍𝘼𝙍𝙄𝙏𝙔: {rarity}\n"
+        f"🏖️ ᴀɴɪᴍᴇ: {escape_markdown(anime)} ({user_in_anime}/{total_in_anime})\n\n"
+        f"❄️ ᴄʜᴇᴄᴋ ʏᴏᴜʀ /harem!"
     )

@@ -2,7 +2,7 @@ import asyncio
 from telegram import Update
 from telegram.ext import ContextTypes
 from bot.database.mongo import users_collection, characters_collection, captures_collection
-from bot.modules.spawn import active_spawns, despawn_tasks
+from bot.modules.spawn import active_spawns
 from bot.utils.spam import is_spammer
 from bot.utils.formatters import generate_success_message
 
@@ -12,7 +12,7 @@ async def capture_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
 
     if not context.args:
-        await update.message.reply_text("Usage: /grab Name or /guess Name")
+        await update.message.reply_text("usage by hug grab catch command")
         return
 
     # Daily Catch Limit (40 per day)
@@ -43,7 +43,7 @@ async def capture_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Check if a spawn is active in this group
     if chat_id not in active_spawns:
-        await update.message.reply_text("❌ No active waifu spawn right now!")
+        await update.message.reply_text("not charter here spawn  in this chat")
         return
 
     guess_name = " ".join(context.args).strip()
@@ -81,13 +81,6 @@ async def capture_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Correct guess! Prevent multiple winners by popping immediately.
         char_data = active_spawns.pop(chat_id)
         
-        # Cancel despawn task
-        if chat_id in despawn_tasks:
-            try:
-                despawn_tasks[chat_id].cancel()
-            except Exception:
-                pass
-            despawn_tasks.pop(chat_id, None)
 
         # Update user in DB
         # We store normalized character ID in their waifus list.
@@ -116,14 +109,28 @@ async def capture_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
             })
         )
 
+        # Calculate Anime Stats
+        total_in_anime = await characters_collection.count_documents({"anime": char_data['anime']})
+        
+        # Get user's current waifus to count unique characters in this anime
+        user_doc = await users_collection.find_one({"id": user.id})
+        user_waifus = list(set(user_doc.get("waifus", []))) # Unique IDs
+        
+        user_in_anime = await characters_collection.count_documents({
+            "id": {"$in": user_waifus},
+            "anime": char_data['anime']
+        })
+
         success_msg = generate_success_message(
             user.id,
             user.first_name, 
             char_data['name'], 
             char_data['anime'], 
-            char_data['rarity']
+            char_data['rarity'],
+            user_in_anime,
+            total_in_anime
         )
         await update.message.reply_text(success_msg, parse_mode="HTML")
     else:
         # Incorrect guess
-        await update.message.reply_text("❌ Incorrect name!")
+        await update.message.reply_text("incorrect name try again ..")

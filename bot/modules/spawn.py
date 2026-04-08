@@ -2,40 +2,12 @@ import asyncio
 from telegram import Update
 from telegram.ext import ContextTypes
 from bot.database.mongo import groups_collection
-from bot.config import SPAWN_DURATION
 from bot.utils.spawning import get_random_character
 from bot.utils.formatters import generate_spawn_message, escape_markdown
 
 # In-memory store for active spawns {chat_id: character_doc}
 active_spawns = {}
-# In-memory store for despawn tasks to cancel them if captured {chat_id: task}
-despawn_tasks = {}
 
-async def despawn_timer(chat_id: int, context: ContextTypes.DEFAULT_TYPE):
-    """Wait for SPAWN_DURATION, then remove active spawn if not caught."""
-    await asyncio.sleep(SPAWN_DURATION)
-    if chat_id in active_spawns:
-        char = active_spawns.pop(chat_id, None)
-        if char:
-            # Delete Original Spawn Message
-            try:
-                msg_id = char.get('spawn_message_id')
-                if msg_id:
-                    await context.bot.delete_message(chat_id=chat_id, message_id=msg_id)
-            except Exception:
-                pass
-
-            try:
-                await context.bot.send_message(
-                    chat_id=chat_id,
-                    text=f"⌛ <b>{escape_markdown(char['name'])}</b> has vanished! Be faster next time!",
-                    parse_mode="HTML"
-                )
-            except Exception:
-                pass
-        
-        if chat_id in despawn_tasks:
-            despawn_tasks.pop(chat_id, None)
 
 async def spawn_character(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Spawns a character in the group."""
@@ -75,9 +47,6 @@ async def spawn_character(update: Update, context: ContextTypes.DEFAULT_TYPE):
     character['spawn_message_id'] = message.message_id
     active_spawns[chat_id] = character
     
-    # Start despawn timer task
-    task = asyncio.create_task(despawn_timer(chat_id, context))
-    despawn_tasks[chat_id] = task
 
 async def group_message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Listens to all group messages, increments counter, drops waifu when threshold hit."""
