@@ -540,10 +540,8 @@ async def check_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 user_data = await users_collection.find_one({"id": str(uid)})
             
             uname = escape_markdown(user_data.get('name') or user_data.get('first_name') or 'Unknown')
-            text += f"➥ <a href='tg://user?id={uid}'>{uname}</a> x{count}\n"
+            text += f"➥ <a href='tg://user?id={uid}'>{uname}</a> (<code>{uid}</code>) x{count}\n"
         text += "\n"
-    else:
-        text += "🌎 <b>ɢʟᴏʙᴀʟ ᴛᴏᴘ ᴄᴀᴛᴄʜᴇʀs</b>\n➥ No one has caught this yet!\n\n"
 
     # Local Top 10 Section
     if local_results:
@@ -556,9 +554,7 @@ async def check_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 user_data = await users_collection.find_one({"id": str(uid)})
             
             uname = escape_markdown(user_data.get('name') or user_data.get('first_name') or 'Unknown')
-            text += f"➥ <a href='tg://user?id={uid}'>{uname}</a> x{count}\n"
-    else:
-        text += "🔐 ɴᴏʙᴏᴅʏ ʜᴀs ᴄᴀᴜɢʜᴛ ɪᴛ ʏᴇᴛ ɪɴ ᴛʜɪs ᴄʜᴀᴛ! ᴡʜᴏ ᴡɪʟʟ ʙᴇ ᴛʜᴇ ғɪʀsᴛ?"
+            text += f"➥ <a href='tg://user?id={uid}'>{uname}</a> (<code>{uid}</code>) x{count}\n"
         
     try:
         file_type = char.get('file_type', 'photo')
