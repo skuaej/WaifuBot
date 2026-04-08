@@ -531,7 +531,7 @@ async def check_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Global Top 10 Section
     if global_results:
-        text += "🌎 <b>ɢʟᴏʙᴀʟ ᴛᴏᴘ ᴄᴀᴛᴄʜᴇʀs</b>\n"
+        text += "🌎 <b>ɢʟᴏʙᴀʟʟʏ ᴛᴏᴘ 10 ᴄᴀᴛᴄʜᴇʀs</b>\n"
         for entry in global_results:
             uid = entry["_id"]
             count = entry["count"]
