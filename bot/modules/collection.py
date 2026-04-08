@@ -28,8 +28,9 @@ async def get_harem_page(user_id: int, page: int, target_user_name: str) -> tupl
     # Unique normalized IDs owned by the user
     normalized_owned_ids = list(counts.keys())
     
-    # Fetch character data
-    cursor = characters_collection.find({"id": {"$in": normalized_owned_ids}})
+    # Fetch character data with projection
+    projection = {"id": 1, "name": 1, "anime": 1, "rarity": 1}
+    cursor = characters_collection.find({"id": {"$in": normalized_owned_ids}}, projection)
     char_map = {}
     async for char in cursor:
         char_map[char["id"]] = char

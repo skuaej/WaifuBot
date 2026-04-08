@@ -1,4 +1,5 @@
-import logging
+import logging, time
+BOT_START_TIME = time.time()
 from telegram import Update
 from telegram.ext import (
     ApplicationBuilder,

@@ -727,19 +727,49 @@ async def changetime_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(f"Failed to change {str(e)}")
 
 async def ping_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Check bot latency."""
-    import time
+    """Check bot latency and system health."""
+    import time, psutil, os
+    from datetime import timedelta
+    from bot.main import BOT_START_TIME
     
+    # Check permissions
     user_id = update.effective_user.id
     if not await is_sudo(user_id):
-        await update.message.reply_text("Nouu.. its Sudo user's Command..")
+        await update.message.reply_text("❌ This is a Sudo only command!")
         return
 
+    # 1. Telegram Latency
     start_time = time.time()
-    msg = await update.message.reply_text('Pong!')
+    msg = await update.message.reply_text("<b>🏓 Pinging...</b>", parse_mode="HTML")
     end_time = time.time()
-    elapsed_time = round((end_time - start_time) * 1000, 3)
-    await msg.edit_text(f'Pong! {elapsed_time}ms')
+    tele_latency = round((end_time - start_time) * 1000, 2)
+
+    # 2. Database Latency
+    db_start = time.time()
+    await db.command("ping")
+    db_latency = round((time.time() - db_start) * 1000, 2)
+
+    # 3. System Metrics
+    cpu_usage = psutil.cpu_percent()
+    ram = psutil.virtual_memory()
+    # psutil.Process() gives memory for the current process
+    process = psutil.Process(os.getpid())
+    ram_usage = process.memory_info().rss / (1024 * 1024) # MB
+    
+    # 4. Uptime
+    uptime_seconds = int(time.time() - BOT_START_TIME)
+    uptime_str = str(timedelta(seconds=uptime_seconds))
+
+    text = (
+        "<b>🏓 PONG!</b>\n\n"
+        f"<b>📡 API Latency:</b> <code>{tele_latency}ms</code>\n"
+        f"<b>🗄️ DB Latency:</b> <code>{db_latency}ms</code>\n"
+        f"<b>⚙️ CPU Usage:</b> <code>{cpu_usage}%</code>\n"
+        f"<b>🧠 RAM Usage:</b> <code>{ram_usage:.2f}MB</code> (of {ram.total // (1024**2)}MB)\n"
+        f"<b>⏰ Uptime:</b> <code>{uptime_str}</code>"
+    )
+
+    await msg.edit_text(text, parse_mode="HTML")
 
 async def enable_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """/enable <on/off> - Toggle games globally (owner only)."""

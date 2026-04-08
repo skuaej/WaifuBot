@@ -18,11 +18,19 @@ blocks_collection = db['blocks']
 
 async def init_db():
     """
-    Initialize indexes or any necessary DB setup.
+    Initialize indexes or any necessary DB setup for high-performance lookups.
     """
     await characters_collection.create_index("name", unique=False)
+    await characters_collection.create_index("id", unique=True)
+    await characters_collection.create_index("anime")
+    
     await users_collection.create_index("id", unique=True)
+    await users_collection.create_index("username")
+    
     await groups_collection.create_index("id", unique=True)
+    
     await captures_collection.create_index([("user_id", 1), ("chat_id", 1)])
     await captures_collection.create_index("char_id")
-    print("Database initialized successfully.")
+    await captures_collection.create_index("timestamp")
+    
+    print("Database initialized successfully with performance indexes.")

@@ -103,9 +103,10 @@ async def inline_query(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if search_harem:
         search_filter["id"] = {"$in": list(normalized_target_owned)}
 
-    # Fetching
+    # Fetching with projection to save memory (RAM)
     limit_val = 50
-    cursor = characters_collection.find(search_filter).sort("_id", -1).limit(limit_val)
+    projection = {"id": 1, "name": 1, "anime": 1, "rarity": 1, "file_id": 1, "file_type": 1}
+    cursor = characters_collection.find(search_filter, projection).sort("_id", -1).limit(limit_val)
     
     if search_harem and not query_text:
         all_chars = await cursor.to_list(limit_val)
