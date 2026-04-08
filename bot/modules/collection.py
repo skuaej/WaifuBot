@@ -493,39 +493,59 @@ async def check_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     from bot.utils.formatters import get_stylized_rarity
     stylized_rarity = get_stylized_rarity(rarity)
     
-    # Global Count
-    global_total = char.get('caught_count', 0)
+    # 1. Global Top 10
+    global_pipeline = [
+        {"$match": {"char_id": char_id}},
+        {"$group": {"_id": "$user_id", "count": {"$sum": 1}}},
+        {"$sort": {"count": -1}},
+        {"$limit": 10}
+    ]
+    global_results = await captures_collection.aggregate(global_pipeline).to_list(length=10)
 
-    # Aggregate users who caught THIS character in THIS chat
+    # 2. Local Chat Top 10
     chat_id = update.effective_chat.id
-    pipeline = [
+    local_pipeline = [
         {"$match": {"char_id": char_id, "chat_id": chat_id}},
         {"$group": {"_id": "$user_id", "count": {"$sum": 1}}},
         {"$sort": {"count": -1}},
         {"$limit": 10}
     ]
-    
-    local_results = await captures_collection.aggregate(pipeline).to_list(length=10)
+    local_results = await captures_collection.aggregate(local_pipeline).to_list(length=10)
     
     # Handle Type (optional)
     char_type = char.get('type')
     type_line = ""
     if char_type:
-        # Try to find emoji in name like [🏖]
         match = re.search(r"\[(\W+)\]", char['name'])
         t_emoji = match.group(1) if match else "💠"
-        # Stylized type line: 💠𝑺𝒂𝒄𝒓𝒆𝒅💠
         type_line = f"\n{t_emoji}<b><i>{char_type}</i></b>{t_emoji}\n"
 
+    # BUILD MESSAGE
     text = (
         f"OwO! Check out this character!\n\n"
         f"<b>{escape_markdown(char['anime'])}</b>\n"
         f"{char['id']}: {escape_markdown(char['name'])}\n"
         f"{stylized_rarity}\n"
         f"{type_line}\n"
-        f"🌎 ᴄᴀᴜɢʜᴛ ɢʟᴏʙᴀʟʟʏ: {global_total} ᴛɪᴍᴇs\n\n"
     )
-    
+
+    # Global Top 10 Section
+    if global_results:
+        text += "🌎 <b>ɢʟᴏʙᴀʟ ᴛᴏᴘ ᴄᴀᴛᴄʜᴇʀs</b>\n"
+        for entry in global_results:
+            uid = entry["_id"]
+            count = entry["count"]
+            user_data = await users_collection.find_one({"id": uid})
+            if not user_data:
+                user_data = await users_collection.find_one({"id": str(uid)})
+            
+            uname = escape_markdown(user_data.get('name') or user_data.get('first_name') or 'Unknown')
+            text += f"➥ <a href='tg://user?id={uid}'>{uname}</a> x{count}\n"
+        text += "\n"
+    else:
+        text += "🌎 <b>ɢʟᴏʙᴀʟ ᴛᴏᴘ ᴄᴀᴛᴄʜᴇʀs</b>\n➥ No one has caught this yet!\n\n"
+
+    # Local Top 10 Section
     if local_results:
         text += f"🎖️ ᴛᴏᴘ 10 ᴄᴀᴛᴄʜᴇʀs ᴏғ ᴛʜɪs ᴄʜᴀʀᴀᴄᴛᴇʀ ɪɴ ᴛʜɪs ᴄʜᴀᴛ\n"
         for entry in local_results:
