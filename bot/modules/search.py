@@ -108,8 +108,14 @@ async def inline_query(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Fetching with projection to save memory (RAM)
     limit_val = 50
-    projection = {"id": 1, "name": 1, "anime": 1, "rarity": 1, "file_id": 1, "file_type": 1}
+    projection = {"id": 1, "name": 1, "anime": 1, "rarity": 1, "file_id": 1, "file_type": 1, "type": 1, "caught_count": 1}
     cursor = characters_collection.find(search_filter, projection).sort("_id", -1).limit(limit_val)
+    
+    char_dict = {} # Initialize for later use
+    counts = {}    # Initialize for later use
+    if search_harem and target_user_data:
+        from collections import Counter
+        counts = Counter(normalized_target_owned)
     
     if search_harem and not query_text:
         all_chars = await cursor.to_list(limit_val)
@@ -125,6 +131,8 @@ async def inline_query(update: Update, context: ContextTypes.DEFAULT_TYPE):
         characters = unique_ordered
     else:
         characters = await cursor.to_list(limit_val)
+        if search_harem:
+            char_dict = {str(c['id']): c for c in characters}
 
     # Fallback if NOTHING is found - show recent characters
     if not characters and not search_harem:
@@ -156,14 +164,43 @@ async def inline_query(update: Update, context: ContextTypes.DEFAULT_TYPE):
             
             # Use stored caught_count for speed
             global_total = char.get('caught_count', 0)
+            char_type = char.get('type')
             
-            caption = (
-                f"OwO! Check out this character!{ownership_tag}\n\n"
-                f"<b>{escape_markdown(anime)}</b>\n\n"
-                f"{char_id}: <b>{escape_markdown(name)}</b>\n\n"
-                f"<b>Rarity:</b> ({r_emoji} <b>RARITY:</b> {rarity})\n"
-                f"<b>Globally Caught:</b> {global_total} times"
-            )
+            from bot.utils.formatters import get_stylized_rarity
+            stylized_rarity = get_stylized_rarity(rarity)
+
+            if search_harem and target_user_data:
+                # Special Harem Theme
+                target_name = target_user_data.get('name') or target_user_data.get('first_name') or 'Unknown'
+                char_count = counts.get(norm_id, 1)
+                
+                # Fetch anime progress for harem view
+                anime_total = await characters_collection.count_documents({"anime": anime})
+                anime_collected = await characters_collection.count_documents({"id": {"$in": list(normalized_target_owned)}, "anime": anime})
+                
+                caption = (
+                    f"⛩ <b>{escape_markdown(target_name)}'s harem</b>\n\n"
+                    f"☘️ Name: {escape_markdown(name)} (x{char_count})\n"
+                    f"{r_emoji} Rarity: {rarity}\n"
+                    f"⚜️ Anime: {escape_markdown(anime)} ({anime_collected}/{anime_total})\n\n"
+                    f"🆔: {char_id} - Needed for trading/gifting"
+                )
+            else:
+                # General Fashion Theme
+                type_line = ""
+                if char_type:
+                    match = re.search(r"\[(\W+)\]", name)
+                    t_emoji = match.group(1) if match else "💠"
+                    type_line = f"\n{t_emoji}<b><i>{char_type}</i></b>{t_emoji}\n"
+
+                caption = (
+                    f"OwO! Check out this character!{ownership_tag}\n\n"
+                    f"<b>{escape_markdown(anime)}</b>\n"
+                    f"{char_id}: <b>{escape_markdown(name)}</b>\n"
+                    f"{stylized_rarity}\n"
+                    f"{type_line}\n"
+                    f"🌎 ᴄᴀᴜɢʜᴛ ɢʟᴏʙᴀʟʟʏ: {global_total} ᴛɪᴍᴇs"
+                )
             
             file_id = char.get('file_id')
             file_type = char.get('file_type', 'photo')

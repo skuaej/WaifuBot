@@ -490,71 +490,55 @@ async def check_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
     char_id = char['id']
     rarity = char.get('rarity', 'Common')
-    emoji_map = {
-        "Common": "🔵", "Uncommon": "🟣", "Rare": "🟠", 
-        "Legendary": "🟡", "Mystical": "💮", "Divine": "⚜️",
-        "Crossverse": "⚡", "Supreme": "🪞", "Cataphract": "✨"
-    }
-    r_emoji = emoji_map.get(rarity, "💮")
+    from bot.utils.formatters import get_stylized_rarity
+    stylized_rarity = get_stylized_rarity(rarity)
     
-    # Aggregate users who have this waifu to find top catchers and global count
-    search_ids = [char_id]
-    if str(char_id).isdigit():
-        search_ids.append(int(char_id))
-        
+    # Global Count
+    global_total = char.get('caught_count', 0)
+
+    # Aggregate users who caught THIS character in THIS chat
+    chat_id = update.effective_chat.id
     pipeline = [
-        {"$match": {"waifus": {"$in": search_ids}}},
-        {"$project": {
-            "name": 1,
-            "first_name": 1,
-            "id": 1,
-            "count": {
-                "$size": {
-                    "$filter": {
-                        "input": "$waifus",
-                        "cond": {"$in": ["$$this", search_ids]}
-                    }
-                }
-            }
-        }},
-        {"$facet": {
-            "total": [{"$group": {"_id": None, "total": {"$sum": "$count"}}}],
-            "top_10": [{"$sort": {"count": -1}}, {"$limit": 10}]
-        }}
+        {"$match": {"char_id": char_id, "chat_id": chat_id}},
+        {"$group": {"_id": "$user_id", "count": {"$sum": 1}}},
+        {"$sort": {"count": -1}},
+        {"$limit": 10}
     ]
     
-    results = await users_collection.aggregate(pipeline).to_list(length=1)
+    local_results = await captures_collection.aggregate(pipeline).to_list(length=10)
     
-    global_total = 0
-    top_catchers = []
-    
-    if results and len(results) > 0:
-        facet_data = results[0]
-        if facet_data.get("total") and len(facet_data["total"]) > 0:
-            global_total = facet_data["total"][0]["total"]
-            
-        top_catchers = facet_data.get("top_10", [])
-        
+    # Handle Type (optional)
+    char_type = char.get('type')
+    type_line = ""
+    if char_type:
+        # Try to find emoji in name like [🏖]
+        match = re.search(r"\[(\W+)\]", char['name'])
+        t_emoji = match.group(1) if match else "💠"
+        # Stylized type line: 💠𝑺𝒂𝒄𝒓𝒆𝒅💠
+        type_line = f"\n{t_emoji}<b><i>{char_type}</i></b>{t_emoji}\n"
+
     text = (
-        f"<b>Character Information</b>\n"
-        f"Message: OwO! Check out this character!\n\n"
-        f"<b>Series:</b> {escape_markdown(char['anime'])}\n\n"
-        f"<b>ID & Name:</b> {char['id']}: {escape_markdown(char['name'])} [💠]\n\n"
-        f"<b>Rarity:</b> ({r_emoji} <b>RARITY:</b> {rarity})\n\n"
-        f"<b>Global Stats</b>\n"
-        f"Caught Globally: {global_total} TIMES\n\n"
-        f"<b>Top 10 Catchers</b>\n"
-        f"🏅 <b>TOP 10 CATCHERS OF THIS CHARACTER!</b>\n\n"
+        f"OwO! Check out this character!\n\n"
+        f"<b>{escape_markdown(char['anime'])}</b>\n"
+        f"{char['id']}: {escape_markdown(char['name'])}\n"
+        f"{stylized_rarity}\n"
+        f"{type_line}\n"
+        f"🌎 ᴄᴀᴜɢʜᴛ ɢʟᴏʙᴀʟʟʏ: {global_total} ᴛɪᴍᴇs\n\n"
     )
     
-    if len(top_catchers) > 0:
-        for u in top_catchers:
-            uname = escape_markdown(u.get('name') or u.get('first_name') or 'Unknown')
-            uid = u.get('id') or u.get('_id', 'Unknown')
-            ucount = u.get('count', 0)
-            text += f"➥ <a href='tg://user?id={uid}'>{uname}</a> (<code>{uid}</code>) x{ucount}\n\n"
+    if local_results:
+        text += f"🎖️ ᴛᴏᴘ 10 ᴄᴀᴛᴄʜᴇʀs ᴏғ ᴛʜɪs ᴄʜᴀʀᴀᴄᴛᴇʀ ɪɴ ᴛʜɪs ᴄʜᴀᴛ\n"
+        for entry in local_results:
+            uid = entry["_id"]
+            count = entry["count"]
+            user_data = await users_collection.find_one({"id": uid})
+            if not user_data:
+                user_data = await users_collection.find_one({"id": str(uid)})
+            
+            uname = escape_markdown(user_data.get('name') or user_data.get('first_name') or 'Unknown')
+            text += f"➥ <a href='tg://user?id={uid}'>{uname}</a> x{count}\n"
     else:
-        text += "<i>Nobody has caught this character yet.</i>"
+        text += "🔐 ɴᴏʙᴏᴅʏ ʜᴀs ᴄᴀᴜɢʜᴛ ɪᴛ ʏᴇᴛ ɪɴ ᴛʜɪs ᴄʜᴀᴛ! ᴡʜᴏ ᴡɪʟʟ ʙᴇ ᴛʜᴇ ғɪʀsᴛ?"
         
     try:
         file_type = char.get('file_type', 'photo')
