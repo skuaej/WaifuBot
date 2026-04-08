@@ -109,17 +109,15 @@ async def capture_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
             })
         )
 
-        # Calculate Anime Stats
-        total_in_anime = await characters_collection.count_documents({"anime": char_data['anime']})
-        
-        # Get user's current waifus to count unique characters in this anime
-        user_doc = await users_collection.find_one({"id": user.id})
-        user_waifus = list(set(user_doc.get("waifus", []))) # Unique IDs
-        
-        user_in_anime = await characters_collection.count_documents({
-            "id": {"$in": user_waifus},
-            "anime": char_data['anime']
-        })
+        # Detect Command for Success Message (grab -> grabbed, hug -> hugged, etc.)
+        raw_command = update.message.text.split()[0][1:].lower().split('@')[0]
+        action_map = {
+            "grab": "ɢʀᴀʙʙᴇᴅ",
+            "hug": "ʜᴜɢɢᴇᴅ",
+            "catch": "ᴄᴀᴜɢʜᴛ",
+            "guess": "ɢᴜᴇssᴇᴅ"
+        }
+        action = action_map.get(raw_command, "ɢᴏᴛ")
 
         success_msg = generate_success_message(
             user.id,
@@ -127,8 +125,7 @@ async def capture_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
             char_data['name'], 
             char_data['anime'], 
             char_data['rarity'],
-            user_in_anime,
-            total_in_anime
+            action
         )
         await update.message.reply_text(success_msg, parse_mode="HTML")
     else:
