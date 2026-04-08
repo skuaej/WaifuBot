@@ -85,7 +85,6 @@ async def capture_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Update user in DB
         # We store normalized character ID in their waifus list.
         # User wants to be able to catch the same character multiple times (unlimited grabs).
-        from bot.database.mongo import captures_collection
         
         await asyncio.gather(
             users_collection.update_one(
