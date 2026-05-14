@@ -496,14 +496,17 @@ async def check_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     from bot.utils.formatters import get_stylized_rarity
     stylized_rarity = get_stylized_rarity(rarity)
     
-    # 1. Global Top 10 (Using normalized ID)
+    # 1. Global Top 10 (From users' harems for total accuracy)
+    # This finds the top 10 owners regardless of how they got the character
     global_pipeline = [
-        {"$match": {"char_id": norm_id}},
-        {"$group": {"_id": "$user_id", "count": {"$sum": 1}}},
+        {"$match": {"waifus": {"$in": [norm_id, char_id]}}},
+        {"$unwind": "$waifus"},
+        {"$match": {"waifus": {"$in": [norm_id, char_id]}}},
+        {"$group": {"_id": "$id", "count": {"$sum": 1}}},
         {"$sort": {"count": -1}},
         {"$limit": 10}
     ]
-    global_results = await captures_collection.aggregate(global_pipeline).to_list(length=10)
+    global_results = await users_collection.aggregate(global_pipeline).to_list(length=10)
 
     # 2. Local Chat Top 10 (Using normalized ID)
     chat_id = update.effective_chat.id

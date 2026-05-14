@@ -96,19 +96,19 @@ async def capture_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 {"id": user.id},
                 {
                     "$set": {"name": user.first_name, "username": user.username},
-                    "$push": {"waifus": normalized_id},
+                    "$push": {"waifus": char_data['id']}, # Store exact ID
                     "$inc": {"coins": 100} # Award 100 coins for catching
                 },
                 upsert=True
             ),
             characters_collection.update_one(
-                {"id": normalized_id},
+                {"id": char_data['id']}, # Use exact ID from database
                 {"$inc": {"caught_count": 1}}
             ),
             captures_collection.insert_one({
                 "user_id": user.id,
                 "chat_id": chat_id,
-                "char_id": normalized_id,
+                "char_id": char_data['id'], # Use exact ID
                 "timestamp": update.message.date
             })
         )
