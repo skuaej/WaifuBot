@@ -70,7 +70,7 @@ async def check_spam_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
         # Notify once if it's a message
         if update.message:
             try:
-                await update.effective_chat.send_message("❌ You are globally banned from using this bot.")
+                await update.effective_chat.send_message("\u274c You are globally banned from using this bot.")
             except: pass
         raise ApplicationHandlerStop()
 
@@ -97,10 +97,10 @@ async def check_spam_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
                 if command_part in BOT_COMMANDS:
                     remaining = await get_block_remaining(user_id)
                     if remaining > 0:
-                        logging.info(f"🚫 BLOCKED COMMAND (FEEDBACK): User {user_id} tried '{text[:20]}...'")
+                        logging.info(f"\U0001f6ab BLOCKED COMMAND (FEEDBACK): User {user_id} tried '{text[:20]}...'")
                         try:
                             await update.effective_chat.send_message(
-                                f"🚫 <b>YOU ARE BLOCKED!</b> (Time: {remaining // 60}m {remaining % 60}s)\n"
+                                f"\U0001f6ab <b>YOU ARE BLOCKED!</b> (Time: {remaining // 60}m {remaining % 60}s)\n"
                                 f"Use /profile to check your status.",
                                 parse_mode="HTML"
                             )
@@ -115,11 +115,11 @@ async def check_spam_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
             query_data = update.callback_query.data
             allowed_prefixes = ("harem_", "stats_", "back_", "close_", "prof_")
             if not query_data.startswith(allowed_prefixes):
-                logging.info(f"🚫 BLOCKED BUTTON: User {user_id} pressed '{query_data}'")
+                logging.info(f"\U0001f6ab BLOCKED BUTTON: User {user_id} pressed '{query_data}'")
                 remaining = await get_block_remaining(user_id)
                 try:
                     await update.callback_query.answer(
-                        f"🚫 BLOCKED! ({remaining // 60}m {remaining % 60}s remains)", 
+                        f"\U0001f6ab BLOCKED! ({remaining // 60}m {remaining % 60}s remains)", 
                         show_alert=True
                     )
                 except: pass
@@ -157,7 +157,7 @@ async def start_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if arg.startswith("upd_"):
                 char_id = arg.split("_")[1]
                 await update.message.reply_text(
-                    f"📝 <b>Update Character {char_id}</b>\n\n"
+                    f"\U0001f4dd <b>Update Character {char_id}</b>\n\n"
                     f"To update this character, use:\n"
                     f"<code>/update {char_id} [name] [series] [rarity] [type]</code>\n\n"
                     f"Or reply to a new image/video with <code>/update {char_id}</code>.",
@@ -170,11 +170,11 @@ async def start_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "***I am An Open Source Character Catcher Bot...​Add Me in Your group.. And I will send Random Characters After.. every 70 messages in Group... Use /guess to.. Collect that Characters in Your Collection.. and see Collection by using /Harem... So add in Your groups and Collect Your harem***"
         )
         await update.message.reply_photo(photo=photo_url, caption=caption, reply_markup=reply_markup, parse_mode="markdown")
-        await send_log(context, f"👤 <b>User Started Bot</b>\nUser: {update.effective_user.first_name} (<code>{update.effective_user.id}</code>)")
+        await send_log(context, f"\U0001f464 <b>User Started Bot</b>\nUser: {update.effective_user.first_name} (<code>{update.effective_user.id}</code>)")
     else:
         await update.message.reply_photo(
             photo=photo_url, 
-            caption="🎴Alive!?... \n connect to me in PM For more information ",
+            caption="\U0001f3b4Alive!?... \n connect to me in PM For more information ",
             reply_markup=reply_markup
         )
 
@@ -186,7 +186,7 @@ def main():
     async def post_init(app):
         await init_db()
         try:
-            await app.bot.send_message(chat_id=LOG_CHAT_ID, text="🚀 <b>Bot has started successfully!</b>", parse_mode="HTML")
+            await app.bot.send_message(chat_id=LOG_CHAT_ID, text="\ud83d\ude80 <b>Bot has started successfully!</b>", parse_mode="HTML")
         except Exception as e:
             print(f"FAILED TO SEND START LOG: {e}")
 

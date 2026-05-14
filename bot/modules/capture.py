@@ -26,7 +26,7 @@ async def capture_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     })
     
     if daily_count >= 40:
-        await update.message.reply_text("❌ <b>You have reached your daily catch limit (40/day)!</b>\nCome back tomorrow! OwO", parse_mode="HTML")
+        await update.message.reply_text("\u274c <b>You have reached your daily catch limit (40/day)!</b>\nCome back tomorrow! OwO", parse_mode="HTML")
         return
 
     # Anti-spam
@@ -34,7 +34,7 @@ async def capture_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     remaining = await get_block_remaining(user.id)
     if remaining > 0:
         await update.message.reply_text(
-            f"🚫 <b>YOU ARE BLOCKED FROM CATCHING!</b>\n"
+            f"\U0001f6ab <b>YOU ARE BLOCKED FROM CATCHING!</b>\n"
             f"<b>Reason:</b> Spamming\n"
             f"<b>Remaining:</b> {remaining // 60}m {remaining % 60}s",
             parse_mode="HTML"

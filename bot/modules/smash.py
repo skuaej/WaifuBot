@@ -17,7 +17,7 @@ async def game_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE, game_type
     # 0. Check global toggle
     settings = await settings_collection.find_one({"id": "global"})
     if settings and not settings.get("games_enabled", True):
-        await update.message.reply_text("❌ The Smash game is currently disabled by the owner.")
+        await update.message.reply_text("\u274c The Smash game is currently disabled by the owner.")
         return
 
     # 1. Check for active proposal
@@ -40,7 +40,7 @@ async def game_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE, game_type
     
     if now - last_run < 300:
         remaining = int(300 - (now - last_run))
-        await update.message.reply_text(f"⏳ <b>Cooldown!</b> Please wait {remaining // 60}m {remaining % 60}s before another smash.", parse_mode="HTML")
+        await update.message.reply_text(f"\u23f3 <b>Cooldown!</b> Please wait {remaining // 60}m {remaining % 60}s before another smash.", parse_mode="HTML")
         return
 
     # 3. Pull a random character of restricted rarity
@@ -52,7 +52,7 @@ async def game_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE, game_type
     chars = await characters_collection.aggregate(pipeline).to_list(1)
     
     if not chars:
-        await update.message.reply_text("❌ No eligible characters found in the database.")
+        await update.message.reply_text("\u274c No eligible characters found in the database.")
         return
         
     char_data = chars[0]
@@ -66,25 +66,25 @@ async def game_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE, game_type
 
     # 5. Build UI
     rarity = char_data.get('rarity', 'Common')
-    emoji_map = {"Common": "🔵", "Uncommon": "🟣", "Rare": "🟠", "Legendary": "🟡"}
-    r_emoji = emoji_map.get(rarity, "💮")
+    emoji_map = {"Common": "\U0001f535", "Uncommon": "\U0001f7e3", "Rare": "\U0001f7e0", "Legendary": "\U0001f7e1"}
+    r_emoji = emoji_map.get(rarity, "\U0001f4ae")
     
     title = "Sᴍᴀꜱʜ Pʀᴏᴘᴏꜱᴇ"
     
     text = (
         f"💥 <b>{title}!</b>\n\n"
-        f"👤 <b>Player:</b> {escape_markdown(user.first_name)}\n"
+        f"\U0001f464 <b>Player:</b> {escape_markdown(user.first_name)}\n"
         f"🌸 <b>Character:</b> {escape_markdown(char_data['name'])}\n"
         f"📺 <b>Anime:</b> {escape_markdown(char_data['anime'])}\n"
-        f"✨ <b>Rarity:</b> ({r_emoji} {rarity})\n\n"
+        f"\u2728 <b>Rarity:</b> ({r_emoji} {rarity})\n\n"
         f"<i>Will you smash or pass?</i>\n\n"
-        f"➥ <i>Use /cancel to stop this proposal.</i>"
+        f"\u27a5 <i>Use /cancel to stop this proposal.</i>"
     )
     
     keyboard = [
         [
             InlineKeyboardButton(f"💥 SMASH", callback_data=f"smash_confirm_{user_id}"),
-            InlineKeyboardButton("❌ CANCEL", callback_data=f"smash_cancel_{user_id}")
+            InlineKeyboardButton("\u274c CANCEL", callback_data=f"smash_cancel_{user_id}")
         ]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -106,7 +106,7 @@ async def game_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE, game_type
         if user_id in active_games:
             del active_games[user_id]
         print(f"Error sending game media: {e}")
-        await update.message.reply_text(f"❌ Error starting game: {e}")
+        await update.message.reply_text(f"\u274c Error starting game: {e}")
 
 async def smash_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await game_cmd(update, context, "smash")
@@ -116,9 +116,9 @@ async def cancel_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     if user_id in active_games:
         del active_games[user_id]
-        await update.message.reply_text("✅ Your active smash proposal has been cancelled.")
+        await update.message.reply_text("\u2705 Your active smash proposal has been cancelled.")
     else:
-        await update.message.reply_text("❌ You have no active proposals to cancel.")
+        await update.message.reply_text("\u274c You have no active proposals to cancel.")
 
 async def _edit_game_msg(query, text):
     """Helper to edit either caption or text."""
@@ -147,19 +147,19 @@ async def game_callback_handler(update: Update, context: ContextTypes.DEFAULT_TY
         return
 
     if user_id != owner_id:
-        await query.answer(f"❌ This is not your smash!", show_alert=True)
+        await query.answer(f"\u274c This is not your smash!", show_alert=True)
         return
 
     if action == "cancel":
         if owner_id in active_games:
             del active_games[owner_id]
-        await _edit_game_msg(query, f"❌ <b>SMASH Proposal Cancelled.</b>")
+        await _edit_game_msg(query, f"\u274c <b>SMASH Proposal Cancelled.</b>")
         await query.answer("Cancelled.")
         return
 
     if action == "confirm":
         if owner_id not in active_games:
-            await query.answer("❌ Proposal expired or already handled.", show_alert=True)
+            await query.answer("\u274c Proposal expired or already handled.", show_alert=True)
             return
             
         entry = active_games[owner_id]

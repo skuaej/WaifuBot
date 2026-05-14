@@ -34,7 +34,7 @@ async def get_char_by_query(query: str):
 async def gift_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """/gift <Waifu Name or ID> (must reply to the target user)"""
     if not update.message.reply_to_message:
-        await update.message.reply_text("❌ You must reply to the user you want to gift to.")
+        await update.message.reply_text("\u274c You must reply to the user you want to gift to.")
         return
         
     if not context.args:
@@ -43,12 +43,12 @@ async def gift_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     target_user = update.message.reply_to_message.from_user
     if target_user.is_bot:
-        await update.message.reply_text("❌ You cannot gift waifus to bots.")
+        await update.message.reply_text("\u274c You cannot gift waifus to bots.")
         return
 
     sender = update.effective_user
     if sender.id == target_user.id:
-        await update.message.reply_text("❌ You cannot gift yourself!")
+        await update.message.reply_text("\u274c You cannot gift yourself!")
         return
 
     query = " ".join(context.args)
@@ -57,7 +57,7 @@ async def gift_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if not char_data:
         print(f"SYSTEM: Character '{query}' not found in DB.")
-        await update.message.reply_text(f"❌ Character '{query}' does not exist.")
+        await update.message.reply_text(f"\u274c Character '{query}' does not exist.")
         return
         
     char_id = char_data['id']
@@ -70,10 +70,10 @@ async def gift_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Normalize all owned IDs for set comparison
         owned_norm = {str(int(wid)) if str(wid).isdigit() else str(wid) for wid in sender_data.get("waifus", [])}
         if norm_char_id not in owned_norm:
-            await update.message.reply_text(f"❌ You do not own {char_data['name']}.")
+            await update.message.reply_text(f"\u274c You do not own {char_data['name']}.")
             return
     else:
-        await update.message.reply_text("❌ You don't have any characters!")
+        await update.message.reply_text("\u274c You don't have any characters!")
         return
 
     # Store as a "gift" deal, indexed by target_user.id for convenience
@@ -85,8 +85,8 @@ async def gift_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     }
 
     keyboard = [
-        [InlineKeyboardButton("🎁 CONFIRM GIFT", callback_data=f"gift_confirm_{target_user.id}")],
-        [InlineKeyboardButton("❌ CANCEL", callback_data=f"gift_cancel_{target_user.id}")]
+        [InlineKeyboardButton("\U0001f381 CONFIRM GIFT", callback_data=f"gift_confirm_{target_user.id}")],
+        [InlineKeyboardButton("\u274c CANCEL", callback_data=f"gift_cancel_{target_user.id}")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
@@ -94,11 +94,11 @@ async def gift_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     target_mention = f"<a href='tg://user?id={target_user.id}'>{escape_markdown(target_user.first_name)}</a>"
 
     await update.message.reply_text(
-        f"🎁 <b>Gɪғᴛ Pʀᴏᴘᴏsᴀʟ</b>\n\n"
-        f"➥ <b>From:</b> {sender_mention} (ID: <code>{sender.id}</code>)\n"
-        f"➥ <b>To:</b> {target_mention} (ID: <code>{target_user.id}</code>)\n"
-        f"➥ <b>Character:</b> {escape_markdown(char_data['name'])} (ID: <code>{char_id}</code>)\n\n"
-        f"👉 {sender_mention}, click <b>CONFIRM GIFT</b> below to send it!",
+        f"\U0001f381 <b>Gɪғᴛ Pʀᴏᴘᴏsᴀʟ</b>\n\n"
+        f"\u27a5 <b>From:</b> {sender_mention} (ID: <code>{sender.id}</code>)\n"
+        f"\u27a5 <b>To:</b> {target_mention} (ID: <code>{target_user.id}</code>)\n"
+        f"\u27a5 <b>Character:</b> {escape_markdown(char_data['name'])} (ID: <code>{char_id}</code>)\n\n"
+        f"\ud83d\udc49 {sender_mention}, click <b>CONFIRM GIFT</b> below to send it!",
         parse_mode="HTML",
         reply_markup=reply_markup
     )
@@ -118,16 +118,16 @@ async def gift_callback_handler(update: Update, context: ContextTypes.DEFAULT_TY
     
     if action == "cancel":
         if not deal:
-            await query.answer("❌ This gift deal has already expired.", show_alert=True)
+            await query.answer("\u274c This gift deal has already expired.", show_alert=True)
             await query.message.delete()
             return
             
         if user.id != deal["initiator_id"] and user.id != deal["target_id"]:
-            await query.answer("❌ You cannot cancel this gift!", show_alert=True)
+            await query.answer("\u274c You cannot cancel this gift!", show_alert=True)
             return
             
         active_deals.pop(target_id, None)
-        await query.message.edit_text("❌ Gift proposal was cancelled.")
+        await query.message.edit_text("\u274c Gift proposal was cancelled.")
         await query.answer("Gift cancelled.")
         return
 
@@ -136,7 +136,7 @@ async def gift_callback_handler(update: Update, context: ContextTypes.DEFAULT_TY
 
     # ONLY the Gifter (initiator) should click "Confirm"
     if user.id != deal["initiator_id"]:
-        await query.answer("❌ Only the sender can confirm this gift!", show_alert=True)
+        await query.answer("\u274c Only the sender can confirm this gift!", show_alert=True)
         return
 
     # Ensure we are working with a dict
@@ -156,7 +156,7 @@ async def gift_callback_handler(update: Update, context: ContextTypes.DEFAULT_TY
     # Final ownership check
     sender_data = await users_collection.find_one({"id": initiator_id})
     if not sender_data:
-        await query.answer("❌ Error: Sender not found.", show_alert=True)
+        await query.answer("\u274c Error: Sender not found.", show_alert=True)
         return
         
     s_waifus = sender_data.get("waifus", [])
@@ -164,7 +164,7 @@ async def gift_callback_handler(update: Update, context: ContextTypes.DEFAULT_TY
     match_id = next((wid for wid in s_waifus if (str(int(wid)) if wid.isdigit() else wid) == norm_char_id), None)
 
     if not match_id:
-        await query.answer("❌ Gift failed: You no longer own the character.", show_alert=True)
+        await query.answer("\u274c Gift failed: You no longer own the character.", show_alert=True)
         await query.message.delete()
         return
 
@@ -188,11 +188,11 @@ async def gift_callback_handler(update: Update, context: ContextTypes.DEFAULT_TY
     receiver_mention = f"<a href='tg://user?id={receiver_id}'>{escape_markdown(receiver_user.first_name)}</a>"
 
     await query.message.edit_text(
-        f"✅ <b>Gɪғᴛ Cᴏɴғɪʀᴍᴇᴅ!</b>\n\n"
+        f"\u2705 <b>Gɪғᴛ Cᴏɴғɪʀᴍᴇᴅ!</b>\n\n"
         f"<b>{sender_mention}</b> has gifted <b>{escape_markdown(char_data['name'])}</b> to <b>{receiver_mention}</b>!",
         parse_mode="HTML"
     )
-    await query.answer("🎁 Gift sent!")
+    await query.answer("\U0001f381 Gift sent!")
 
 async def trade_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """/trade <MyID> <TheirID> (must reply to them)"""
@@ -208,7 +208,7 @@ async def trade_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     sender = update.effective_user
 
     if target_user.is_bot or sender.id == target_user.id:
-        await update.message.reply_text("❌ Invalid trade target.")
+        await update.message.reply_text("\u274c Invalid trade target.")
         return
 
     if len(context.args) < 2:
@@ -225,7 +225,7 @@ async def trade_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     request_char = await get_char_by_query(request_id)
 
     if not offer_char or not request_char:
-        await update.message.reply_text("❌ One or both of the specified characters do not exist.")
+        await update.message.reply_text("\u274c One or both of the specified characters do not exist.")
         return
 
     sender_data = await users_collection.find_one({"id": sender.id})
@@ -238,21 +238,21 @@ async def trade_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if sender_data:
         sender_owned = {str(int(wid)) if str(wid).isdigit() else str(wid) for wid in sender_data.get("waifus", [])}
         if norm_offer not in sender_owned:
-            await update.message.reply_text(f"❌ You do not own <b>{escape_markdown(offer_char['name'])}</b>.", parse_mode="HTML")
+            await update.message.reply_text(f"\u274c You do not own <b>{escape_markdown(offer_char['name'])}</b>.", parse_mode="HTML")
             return
     else:
-        await update.message.reply_text("❌ You don't have any characters!")
+        await update.message.reply_text("\u274c You don't have any characters!")
         return
 
     if target_data:
         target_owned = {str(int(wid)) if str(wid).isdigit() else str(wid) for wid in target_data.get("waifus", [])}
         if norm_request not in target_owned:
             target_mention = f"<a href='tg://user?id={target_user.id}'>{escape_markdown(target_user.first_name)}</a>"
-            await update.message.reply_text(f"❌ {target_mention} does not own <b>{escape_markdown(request_char['name'])}</b>.", parse_mode="HTML")
+            await update.message.reply_text(f"\u274c {target_mention} does not own <b>{escape_markdown(request_char['name'])}</b>.", parse_mode="HTML")
             return
     else:
         target_mention = f"<a href='tg://user?id={target_user.id}'>{escape_markdown(target_user.first_name)}</a>"
-        await update.message.reply_text(f"❌ {target_mention} does not have any characters!", parse_mode="HTML")
+        await update.message.reply_text(f"\u274c {target_mention} does not have any characters!", parse_mode="HTML")
         return
 
     # Store trade proposal
@@ -264,8 +264,8 @@ async def trade_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     }
 
     keyboard = [
-        [InlineKeyboardButton("✅ Confirm Trade", callback_data=f"trade_confirm_{target_user.id}")],
-        [InlineKeyboardButton("❌ Cancel Trade", callback_data=f"trade_cancel_{target_user.id}")]
+        [InlineKeyboardButton("\u2705 Confirm Trade", callback_data=f"trade_confirm_{target_user.id}")],
+        [InlineKeyboardButton("\u274c Cancel Trade", callback_data=f"trade_cancel_{target_user.id}")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
@@ -276,7 +276,7 @@ async def trade_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"🔄 <b>Tʀᴀᴅᴇ Pʀᴏᴘᴏsᴀʟ!</b>\n\n"
         f"<b>{sender_mention}</b> offers: <b>{escape_markdown(offer_char['name'])}</b>\n"
         f"For <b>{target_mention}</b>'s: <b>{escape_markdown(request_char['name'])}</b>\n\n"
-        f"👉 {target_mention}, do you accept this trade?",
+        f"\ud83d\udc49 {target_mention}, do you accept this trade?",
         parse_mode="HTML",
         reply_markup=reply_markup
     )
@@ -295,18 +295,18 @@ async def trade_callback_handler(update: Update, context: ContextTypes.DEFAULT_T
     deal = active_deals.get(target_id)
     
     if not deal or deal.get("type") != "trade":
-        await query.answer("❌ This trade deal has expired or is invalid.", show_alert=True)
+        await query.answer("\u274c This trade deal has expired or is invalid.", show_alert=True)
         await query.message.delete()
         return
 
     # ONLY the target should confirm/cancel
     if user.id != target_id:
-        await query.answer("❌ This is not for you!", show_alert=True)
+        await query.answer("\u274c This is not for you!", show_alert=True)
         return
 
     if action == "cancel":
         active_deals.pop(target_id, None)
-        await query.message.edit_text("❌️ Sad Cancelled....")
+        await query.message.edit_text("\u274c️ Sad Cancelled....")
         await query.answer("Trade cancelled.")
         return
 
@@ -329,11 +329,11 @@ async def trade_callback_handler(update: Update, context: ContextTypes.DEFAULT_T
         t_match = next((wid for wid in t_waifus if (str(int(wid)) if str(wid).isdigit() else wid) == norm_request), None)
 
         if not s_match:
-            await query.answer("❌ Trade failed: Initiator no longer owns the character.", show_alert=True)
+            await query.answer("\u274c Trade failed: Initiator no longer owns the character.", show_alert=True)
             return
 
         if not t_match:
-            await query.answer("❌ Trade failed: You no longer own the character.", show_alert=True)
+            await query.answer("\u274c Trade failed: You no longer own the character.", show_alert=True)
             return
 
         # Perform swap
@@ -355,8 +355,8 @@ async def trade_callback_handler(update: Update, context: ContextTypes.DEFAULT_T
 
         sender_user = await context.bot.get_chat(initiator_id)
         sender_mention = f"<a href='tg://user?id={initiator_id}'>{escape_markdown(sender_user.first_name)}</a>"
-        await query.message.edit_text(f"✅ Trade Confirmed! You successfully traded characters with {sender_mention}!", parse_mode="HTML")
-        await query.answer("✅ Trade successful!")
+        await query.message.edit_text(f"\u2705 Trade Confirmed! You successfully traded characters with {sender_mention}!", parse_mode="HTML")
+        await query.answer("\u2705 Trade successful!")
 
 async def reset_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """/reset to cancel ongoing trade or gift deals."""
@@ -375,10 +375,10 @@ async def reset_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         active_deals.pop(tid, None)
         
     if found:
-        await update.message.reply_text("✅ All your ongoing trade or gift deals have been cancelled.")
+        await update.message.reply_text("\u2705 All your ongoing trade or gift deals have been cancelled.")
     else:
         await update.message.reply_text("⏹️ ʏᴏᴜ ᴅᴏɴ'ᴛ ʜᴀᴠᴇ ᴀɴʏ ᴏɴɢᴏɪɴɢ ᴛʀᴀᴅᴇ ᴏʀ ɢɪғᴛ ᴅᴇᴀʟs.")
 
 async def accept_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Deprecated /accept command. Tell user to use inline buttons."""
-    await update.message.reply_text("❌ Please use the inline buttons on the trade or gift proposal to confirm or cancel.")
+    await update.message.reply_text("\u274c Please use the inline buttons on the trade or gift proposal to confirm or cancel.")

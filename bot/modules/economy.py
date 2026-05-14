@@ -13,7 +13,7 @@ async def balance_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     user_data = await users_collection.find_one({"id": user.id})
     coins = user_data.get("coins", 0) if user_data else 0
-    await update.message.reply_text(f"💰 You have <b>{coins}</b> coins.", parse_mode="HTML")
+    await update.message.reply_text(f"\U0001f4b0 You have <b>{coins}</b> coins.", parse_mode="HTML")
 
 async def bonus_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """/bonus for daily reward."""
@@ -27,7 +27,7 @@ async def bonus_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         remaining = int(DAILY_COOLDOWN - (current_time - last_bonus))
         hours, remainder = divmod(remaining, 3600)
         minutes, _ = divmod(remainder, 60)
-        await update.message.reply_text(f"⏳ You have already claimed your bonus! Come back in {hours}h {minutes}m.")
+        await update.message.reply_text(f"\u23f3 You have already claimed your bonus! Come back in {hours}h {minutes}m.")
         return
 
     await users_collection.update_one(
@@ -48,14 +48,14 @@ async def bonus_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def transfer_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """/transfer <amount> to replied user."""
     if not update.message.reply_to_message:
-        await update.message.reply_text("❌ Reply to the user you want to transfer coins to.")
+        await update.message.reply_text("\u274c Reply to the user you want to transfer coins to.")
         return
 
     target_user = update.message.reply_to_message.from_user
     sender = update.effective_user
 
     if target_user.is_bot or sender.id == target_user.id:
-        await update.message.reply_text("❌ Invalid target for transfer.")
+        await update.message.reply_text("\u274c Invalid target for transfer.")
         return
 
     try:
@@ -70,7 +70,7 @@ async def transfer_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     sender_coins = sender_data.get("coins", 0) if sender_data else 0
 
     if sender_coins < amount:
-        await update.message.reply_text(f"❌ You don't have enough coins! Balance: {sender_coins}")
+        await update.message.reply_text(f"\u274c You don't have enough coins! Balance: {sender_coins}")
         return
 
     # Deduct from sender

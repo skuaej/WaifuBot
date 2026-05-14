@@ -152,15 +152,15 @@ async def inline_query(update: Update, context: ContextTypes.DEFAULT_TYPE):
             seen.add(norm_id)
             
             is_owned = norm_id in normalized_caller_owned
-            ownership_tag = " [Caught ✅]" if is_owned else ""
+            ownership_tag = " [Caught \u2705]" if is_owned else ""
             rarity = str(char.get('rarity', 'Common'))
             
             emoji_map = {
-                "1": "🤍", "Common": "🔵", "Uncommon": "🟣", "Rare": "🟠", 
-                "Legendary": "🟡", "Mystical": "💮", "Divine": "⚜️",
-                "Crossverse": "⚡", "Supreme": "🤍", "Cataphract": "✨"
+                "1": "🤍", "Common": "\U0001f535", "Uncommon": "\U0001f7e3", "Rare": "\U0001f7e0", 
+                "Legendary": "\U0001f7e1", "Mystical": "\U0001f4ae", "Divine": "\u269c\ufe0f",
+                "Crossverse": "\u26a1", "Supreme": "🤍", "Cataphract": "\u2728"
             }
-            r_emoji = emoji_map.get(rarity, "💮")
+            r_emoji = emoji_map.get(rarity, "\U0001f4ae")
             
             # Use stored caught_count for speed
             global_total = char.get('caught_count', 0)
@@ -179,18 +179,18 @@ async def inline_query(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 anime_collected = await characters_collection.count_documents({"id": {"$in": list(normalized_target_owned)}, "anime": anime})
                 
                 caption = (
-                    f"⛩ <b>{escape_markdown(target_name)}'s harem</b>\n\n"
-                    f"☘️ Name: {escape_markdown(name)} (x{char_count})\n"
+                    f"\u26e9 <b>{escape_markdown(target_name)}'s harem</b>\n\n"
+                    f"\u2618\ufe0f Name: {escape_markdown(name)} (x{char_count})\n"
                     f"{r_emoji} Rarity: {rarity}\n"
-                    f"⚜️ Anime: {escape_markdown(anime)} ({anime_collected}/{anime_total})\n\n"
-                    f"🆔: {char_id} - Needed for trading/gifting"
+                    f"\u269c\ufe0f Anime: {escape_markdown(anime)} ({anime_collected}/{anime_total})\n\n"
+                    f"\U0001f194: {char_id} - Needed for trading/gifting"
                 )
             else:
                 # General Fashion Theme
                 type_line = ""
                 if char_type:
                     match = re.search(r"\[(\W+)\]", name)
-                    t_emoji = match.group(1) if match else "💠"
+                    t_emoji = match.group(1) if match else "\U0001f4a0"
                     type_line = f"\n{t_emoji}<b><i>{char_type}</i></b>{t_emoji}\n"
 
                 caption = (
@@ -199,7 +199,7 @@ async def inline_query(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     f"{char_id}: <b>{escape_markdown(name)}</b>\n"
                     f"{stylized_rarity}\n"
                     f"{type_line}\n"
-                    f"🌎 ᴄᴀᴜɢʜᴛ ɢʟᴏʙᴀʟʟʏ: {global_total} ᴛɪᴍᴇs"
+                    f"\U0001f30e ᴄᴀᴜɢʜᴛ ɢʟᴏʙᴀʟʟʏ: {global_total} ᴛɪᴍᴇs"
                 )
             
             file_id = char.get('file_id')

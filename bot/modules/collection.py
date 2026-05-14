@@ -15,7 +15,7 @@ async def get_harem_page(user_id: int, page: int, target_user_name: str) -> tupl
         user_data = await users_collection.find_one({"id": str(user_id)})
         
     if not user_data or not user_data.get("waifus"):
-        return "❌ You haven't caught any waifus yet!", None, None
+        return "\u274c You haven't caught any waifus yet!", None, None
 
     waifu_ids = user_data["waifus"]
     hmode = user_data.get("hmode", "Default")
@@ -39,9 +39,9 @@ async def get_harem_page(user_id: int, page: int, target_user_name: str) -> tupl
     normalized_owned_ids = [wid for wid in normalized_owned_ids if wid in char_map]
             
     emoji_map = {
-        "Common": "🔵", "Uncommon": "🟣", "Rare": "🟠", 
-        "Legendary": "🟡", "Mystical": "💮", "Divine": "⚜️",
-        "Crossverse": "⚡", "Supreme": "🪞", "Cataphract": "✨"
+        "Common": "\U0001f535", "Uncommon": "\U0001f7e3", "Rare": "\U0001f7e0", 
+        "Legendary": "\U0001f7e1", "Mystical": "\U0001f4ae", "Divine": "\u269c\ufe0f",
+        "Crossverse": "\u26a1", "Supreme": "\U0001fa9e", "Cataphract": "\u2728"
     }
 
     # Filter based on hmode if it's a specific rarity
@@ -49,7 +49,7 @@ async def get_harem_page(user_id: int, page: int, target_user_name: str) -> tupl
         normalized_owned_ids = [wid for wid in normalized_owned_ids if char_map[wid].get("rarity", "Common") == hmode]
     
     if not normalized_owned_ids:
-        return f"❌ You don't have any characters matching the selected rarity filter ({hmode}).", None, None
+        return f"\u274c You don't have any characters matching the selected rarity filter ({hmode}).", None, None
 
     # Sort characters: first by anime, then by ID
     normalized_owned_ids.sort(key=lambda x: (char_map[x]['anime'], int(x) if x.isdigit() else x))
@@ -69,7 +69,7 @@ async def get_harem_page(user_id: int, page: int, target_user_name: str) -> tupl
     
     for wid in page_ids:
         char = char_map[wid]
-        r_emoji = emoji_map.get(char.get('rarity', 'Common'), '💮')
+        r_emoji = emoji_map.get(char.get('rarity', 'Common'), '\U0001f4ae')
         char_count = counts.get(wid, 1)
         
         # Find total collected in this anime
@@ -78,10 +78,10 @@ async def get_harem_page(user_id: int, page: int, target_user_name: str) -> tupl
         total_in_db = await characters_collection.count_documents({"anime": char['anime']})
         
         text += (
-            f"\n☘️ <b>Name:</b> {escape_markdown(char['name'])} (x{char_count})\n"
-            f"🆔 <b>ID:</b> <code>{char['id']}</code>\n"
+            f"\n\u2618\ufe0f <b>Name:</b> {escape_markdown(char['name'])} (x{char_count})\n"
+            f"\U0001f194 <b>ID:</b> <code>{char['id']}</code>\n"
             f"{r_emoji} <b>Rarity:</b> {char.get('rarity', 'Common')}\n"
-            f"⚜️ <b>Anime:</b> {escape_markdown(char['anime'])} ({collected_in_anime}/{total_in_db})\n"
+            f"\u269c\ufe0f <b>Anime:</b> {escape_markdown(char['anime'])} ({collected_in_anime}/{total_in_db})\n"
         )
 
     # Grab Display Image
@@ -102,15 +102,15 @@ async def get_harem_page(user_id: int, page: int, target_user_name: str) -> tupl
     keyboard = []
     nav_row = []
     if page > 1:
-        nav_row.append(InlineKeyboardButton("⬅️ Back", callback_data=f"harem_page_{user_id}_{page-1}"))
+        nav_row.append(InlineKeyboardButton("\u2b05\ufe0f Back", callback_data=f"harem_page_{user_id}_{page-1}"))
     
     if page < total_pages:
-        nav_row.append(InlineKeyboardButton("Next ➡️", callback_data=f"harem_page_{user_id}_{page+1}"))
+        nav_row.append(InlineKeyboardButton("Next \u27a1\ufe0f", callback_data=f"harem_page_{user_id}_{page+1}"))
     
     if nav_row:
         keyboard.append(nav_row)
         
-    keyboard.append([InlineKeyboardButton(f"⛩ CHARACTERS ({total_items})", switch_inline_query_current_chat=f"harem.{user_id} ")])
+    keyboard.append([InlineKeyboardButton(f"\u26e9 CHARACTERS ({total_items})", switch_inline_query_current_chat=f"harem.{user_id} ")])
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     return text, display_char, reply_markup
@@ -151,25 +151,25 @@ async def collection_callback_handler(update: Update, context: ContextTypes.DEFA
             
         await users_collection.update_one({"id": user_id}, {"$set": {"hmode": mode}}, upsert=True)
         await query.answer(f"Harem mode set to: {mode}")
-        await query.edit_message_text(f"❄️ CHOOSE YOUR PREFFERED RARITY\n\n✅ Updated to: {mode}", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🗑️ CLOSE", callback_data="hmode_close")]]))
+        await query.edit_message_text(f"❄️ CHOOSE YOUR PREFFERED RARITY\n\n\u2705 Updated to: {mode}", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🗑️ CLOSE", callback_data="hmode_close")]]))
         return
 
     if data.startswith("harem_page_"):
         parts = data.split("_")
         if len(parts) < 4:
-            await query.answer("❌ Invalid callback data.", show_alert=True)
+            await query.answer("\u274c Invalid callback data.", show_alert=True)
             return
             
         target_id = int(parts[2])
         page = int(parts[3])
         
         if user_id != target_id:
-            await query.answer("❌ This is not your harem!", show_alert=True)
+            await query.answer("\u274c This is not your harem!", show_alert=True)
             return
             
             
         text, display_char, reply_markup = await get_harem_page(target_id, page, query.from_user.first_name)
-        if text.startswith("❌"):
+        if text.startswith("\u274c"):
             await query.answer(text, show_alert=True)
             return
 
@@ -192,7 +192,7 @@ async def collection_callback_handler(update: Update, context: ContextTypes.DEFA
                 await query.edit_message_caption(caption=text, parse_mode="HTML", reply_markup=reply_markup)
         except Exception as e:
             print(f"Error in harem callback: {e}")
-            await query.answer("❌ Error updating harem page.", show_alert=True)
+            await query.answer("\u274c Error updating harem page.", show_alert=True)
             pass
 
         await query.answer()
@@ -202,15 +202,15 @@ async def hmode_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
         [InlineKeyboardButton("🐉 Default", callback_data="hmode_Default"), InlineKeyboardButton("Detailed 🦖", callback_data="hmode_Detailed")],
         [InlineKeyboardButton("🦕 Reset Preference", callback_data="hmode_Default")],
-        [InlineKeyboardButton("✨ RARITY: Cataphract", callback_data="hmode_Cataphract")],
-        [InlineKeyboardButton("🪞 RARITY: Supreme", callback_data="hmode_Supreme")],
-        [InlineKeyboardButton("⚡ RARITY: Crossverse", callback_data="hmode_Crossverse")],
-        [InlineKeyboardButton("⚜️ RARITY: Divine", callback_data="hmode_Divine")],
-        [InlineKeyboardButton("💮 RARITY: Mystical", callback_data="hmode_Mystical")],
-        [InlineKeyboardButton("🟡 RARITY: Legendary", callback_data="hmode_Legendary")],
-        [InlineKeyboardButton("🟠 RARITY: Rare", callback_data="hmode_Rare")],
-        [InlineKeyboardButton("🟣 RARITY: Uncommon", callback_data="hmode_Uncommon")],
-        [InlineKeyboardButton("🔵 RARITY: Common", callback_data="hmode_Common")],
+        [InlineKeyboardButton("\u2728 RARITY: Cataphract", callback_data="hmode_Cataphract")],
+        [InlineKeyboardButton("\U0001fa9e RARITY: Supreme", callback_data="hmode_Supreme")],
+        [InlineKeyboardButton("\u26a1 RARITY: Crossverse", callback_data="hmode_Crossverse")],
+        [InlineKeyboardButton("\u269c\ufe0f RARITY: Divine", callback_data="hmode_Divine")],
+        [InlineKeyboardButton("\U0001f4ae RARITY: Mystical", callback_data="hmode_Mystical")],
+        [InlineKeyboardButton("\U0001f7e1 RARITY: Legendary", callback_data="hmode_Legendary")],
+        [InlineKeyboardButton("\U0001f7e0 RARITY: Rare", callback_data="hmode_Rare")],
+        [InlineKeyboardButton("\U0001f7e3 RARITY: Uncommon", callback_data="hmode_Uncommon")],
+        [InlineKeyboardButton("\U0001f535 RARITY: Common", callback_data="hmode_Common")],
         [InlineKeyboardButton("🗑️ CLOSE", callback_data="hmode_close")],
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -282,23 +282,23 @@ async def profile_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     text = (
         "  ╭──「 🎗️ Cᴀᴛᴄʜᴇʀ Pʀᴏғɪʟᴇ 🎗 」\n"
-        f"├─➩ 👤 ᴜsᴇʀ: <a href='tg://user?id={user.id}'>{escape_markdown(user.first_name)}</a>\n"
+        f"├─➩ \U0001f464 ᴜsᴇʀ: <a href='tg://user?id={user.id}'>{escape_markdown(user.first_name)}</a>\n"
         f"├─➩ 🔩 ᴜsᴇʀ ɪᴅ: <code>{user.id}</code>\n"
-        f"├─➩ ⚡ ᴛᴏᴛᴀʟ ᴄʜᴀʀᴀᴄᴛᴇʀ: {total_characters} ({total_distinct})\n"
-        f"├─➩ 🫧 ʜᴀʀᴇᴍ: {total_distinct}/{max_characters} ({h_percent:.3f}%)\n"
+        f"├─➩ \u26a1 ᴛᴏᴛᴀʟ ᴄʜᴀʀᴀᴄᴛᴇʀ: {total_characters} ({total_distinct})\n"
+        f"├─➩ \U0001fae7 ʜᴀʀᴇᴍ: {total_distinct}/{max_characters} ({h_percent:.3f}%)\n"
         f"├─➩ {block_status}\n"
         "╭───────────────────\n"
-        f"├─➩ 🔵 𝙍𝘼𝙍𝙄𝙏𝙔: Common: {rarities['Common']}\n"
-        f"├─➩ 🟣 𝙍𝘼𝙍𝙄𝙏𝙔: Uncommon: {rarities['Uncommon']}\n"
-        f"├─➩ 🟠 𝙍𝘼𝙍𝙄𝙏𝙔: Rare: {rarities['Rare']}\n"
-        f"├─➩ 🟡 𝙍𝘼𝙍𝙄𝙏𝙔: Legendary: {rarities['Legendary']}\n"
-        f"├─➩ 💮 𝙍𝘼𝙍𝙄𝙏𝙔: Mystical: {rarities['Mystical']}\n"
-        f"├─➩ ⚜️ 𝙍𝘼𝙍𝙄ᴛʏ: Divine: {rarities['Divine']}\n"
-        f"├─➩ ⚡ 𝙍𝘼𝙍𝙄𝙏𝙔: Crossverse: {rarities['Crossverse']}\n"
-        f"├─➩ 🪞 𝙍𝘼𝙍𝙄𝙏𝙔: Supreme: {rarities['Supreme']}\n"
-        f"├─➩ ✨ 𝙍𝘼𝙍𝙄ᴛʏ: Cataphract: {rarities['Cataphract']}\n"
+        f"├─➩ \U0001f535 𝙍𝘼𝙍𝙄𝙏𝙔: Common: {rarities['Common']}\n"
+        f"├─➩ \U0001f7e3 𝙍𝘼𝙍𝙄𝙏𝙔: Uncommon: {rarities['Uncommon']}\n"
+        f"├─➩ \U0001f7e0 𝙍𝘼𝙍𝙄𝙏𝙔: Rare: {rarities['Rare']}\n"
+        f"├─➩ \U0001f7e1 𝙍𝘼𝙍𝙄𝙏𝙔: Legendary: {rarities['Legendary']}\n"
+        f"├─➩ \U0001f4ae 𝙍𝘼𝙍𝙄𝙏𝙔: Mystical: {rarities['Mystical']}\n"
+        f"├─➩ \u269c\ufe0f 𝙍𝘼𝙍𝙄ᴛʏ: Divine: {rarities['Divine']}\n"
+        f"├─➩ \u26a1 𝙍𝘼𝙍𝙄𝙏𝙔: Crossverse: {rarities['Crossverse']}\n"
+        f"├─➩ \U0001fa9e 𝙍𝘼𝙍𝙄𝙏𝙔: Supreme: {rarities['Supreme']}\n"
+        f"├─➩ \u2728 𝙍𝘼𝙍𝙄ᴛʏ: Cataphract: {rarities['Cataphract']}\n"
         "╭───────────────────\n"
-        f"├─➩ 🏆 Gʟᴏʙᴀʟ Rᴀɴᴋ: {global_rank if global_rank > 0 else 'N/A'}\n"
+        f"├─➩ \U0001f3c6 Gʟᴏʙᴀʟ Rᴀɴᴋ: {global_rank if global_rank > 0 else 'N/A'}\n"
         f"├─➩ 📍 Cʜᴀᴛ Rᴀɴᴋ: {local_rank if local_rank > 0 else 'N/A'}\n"
         "╰───────────────────"
     )
@@ -320,11 +320,11 @@ async def top_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         leaderboard_data = await users_collection.aggregate(user_pipeline).to_list(length=10)
     except Exception as e:
         print(f"TOP AGGREGATION ERROR: {e}")
-        await update.message.reply_text("❌ Error fetching the global leaderboard.")
+        await update.message.reply_text("\u274c Error fetching the global leaderboard.")
         return
         
     if not leaderboard_data:
-        await update.message.reply_text("❌ No users found in the leaderboard.")
+        await update.message.reply_text("\u274c No users found in the leaderboard.")
         return
         
     text = "<b>TOP 10 USERS WITH MOST CHARACTERS GLOBALLY</b>\n\n"
@@ -393,7 +393,7 @@ async def fav_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_data = await users_collection.find_one({"id": user.id})
 
     if not user_data or not user_data.get("waifus"):
-        await update.message.reply_text("❌ You don't have any waifus!")
+        await update.message.reply_text("\u274c You don't have any waifus!")
         return
 
     # Normalize all owned IDs for checking
@@ -401,7 +401,7 @@ async def fav_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     normalized_owned = {str(int(wid)) if str(wid).isdigit() else wid for wid in waifus_list}
     
     if norm_input not in normalized_owned:
-        await update.message.reply_text(f"❌ You don't own waifu ID {input_id}!")
+        await update.message.reply_text(f"\u274c You don't own waifu ID {input_id}!")
         return
         
     # Robust search by ID (padded or not)
@@ -413,17 +413,17 @@ async def fav_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         char_data = await characters_collection.find_one({"id": input_id})
         
     if not char_data:
-        await update.message.reply_text(f"❌ Character ID {input_id} not found in database.")
+        await update.message.reply_text(f"\u274c Character ID {input_id} not found in database.")
         return
         
     actual_id = char_data['id']
     
     keyboard = [
-        [InlineKeyboardButton("✅ Yes", callback_data=f"fav_yes_{actual_id}"), InlineKeyboardButton("❌ No", callback_data="fav_no")]
+        [InlineKeyboardButton("\u2705 Yes", callback_data=f"fav_yes_{actual_id}"), InlineKeyboardButton("\u274c No", callback_data="fav_no")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     
-    text = f"💖 Do you want to set <b>{escape_markdown(char_data['name'])}</b> as your favorite?"
+    text = f"\U0001f496 Do you want to set <b>{escape_markdown(char_data['name'])}</b> as your favorite?"
     
     try:
         file_type = char_data.get('file_type', 'photo')
@@ -459,7 +459,7 @@ async def fav_callback_handler(update: Update, context: ContextTypes.DEFAULT_TYP
         char_data = await characters_collection.find_one({"id": actual_id})
         name = escape_markdown(char_data['name']) if char_data else "Unknown"
         
-        await query.message.edit_caption(f"💖 Successfully set <b>{name}</b> as your favorite!", parse_mode="HTML", reply_markup=None)
+        await query.message.edit_caption(f"\U0001f496 Successfully set <b>{name}</b> as your favorite!", parse_mode="HTML", reply_markup=None)
         await query.answer("Favorite updated!")
 
 async def check_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -485,7 +485,7 @@ async def check_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         char = await characters_collection.find_one({"name": regex})
         
     if not char:
-        await update.message.reply_text(f"❌ Character not found.")
+        await update.message.reply_text(f"\u274c Character not found.")
         return
         
     char_id = char['id']
@@ -517,7 +517,7 @@ async def check_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     type_line = ""
     if char_type:
         match = re.search(r"\[(\W+)\]", char['name'])
-        t_emoji = match.group(1) if match else "💠"
+        t_emoji = match.group(1) if match else "\U0001f4a0"
         type_line = f"\n{t_emoji}<b><i>{char_type}</i></b>{t_emoji}\n"
 
     # BUILD MESSAGE
@@ -531,7 +531,7 @@ async def check_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Global Top 10 Section
     if global_results:
-        text += "🌎 <b>ɢʟᴏʙᴀʟʟʏ ᴛᴏᴘ 10 ᴄᴀᴛᴄʜᴇʀs</b>\n"
+        text += "\U0001f30e <b>ɢʟᴏʙᴀʟʟʏ ᴛᴏᴘ 10 ᴄᴀᴛᴄʜᴇʀs</b>\n"
         for entry in global_results:
             uid = entry["_id"]
             count = entry["count"]
@@ -540,12 +540,12 @@ async def check_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 user_data = await users_collection.find_one({"id": str(uid)})
             
             uname = escape_markdown(user_data.get('name') or user_data.get('first_name') or 'Unknown')
-            text += f"➥ <a href='tg://user?id={uid}'>{uname}</a> (<code>{uid}</code>) x{count}\n"
+            text += f"\u27a5 <a href='tg://user?id={uid}'>{uname}</a> (<code>{uid}</code>) x{count}\n"
         text += "\n"
 
     # Local Top 10 Section
     if local_results:
-        text += f"🎖️ ᴛᴏᴘ 10 ᴄᴀᴛᴄʜᴇʀs ᴏғ ᴛʜɪs ᴄʜᴀʀᴀᴄᴛᴇʀ ɪɴ ᴛʜɪs ᴄʜᴀᴛ\n"
+        text += f"\U0001f396\ufe0f ᴛᴏᴘ 10 ᴄᴀᴛᴄʜᴇʀs ᴏғ ᴛʜɪs ᴄʜᴀʀᴀᴄᴛᴇʀ ɪɴ ᴛʜɪs ᴄʜᴀᴛ\n"
         for entry in local_results:
             uid = entry["_id"]
             count = entry["count"]
@@ -554,7 +554,7 @@ async def check_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 user_data = await users_collection.find_one({"id": str(uid)})
             
             uname = escape_markdown(user_data.get('name') or user_data.get('first_name') or 'Unknown')
-            text += f"➥ <a href='tg://user?id={uid}'>{uname}</a> (<code>{uid}</code>) x{count}\n"
+            text += f"\u27a5 <a href='tg://user?id={uid}'>{uname}</a> (<code>{uid}</code>) x{count}\n"
         
     try:
         file_type = char.get('file_type', 'photo')
@@ -567,7 +567,7 @@ async def check_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         # Fallback to text-only if file_id is invalid (common after switching bots)
         await update.message.reply_text(
-            text + "\n\n⚠️ <b>Media Error:</b> The file ID for this character is invalid for the current bot. Please re-upload this character.",
+            text + "\n\n\u26a0\ufe0f <b>Media Error:</b> The file ID for this character is invalid for the current bot. Please re-upload this character.",
             parse_mode="HTML"
         )
 
@@ -586,11 +586,11 @@ async def hclaim_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 raise Exception("Not a member")
         except Exception:
             from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-            keyboard = [[InlineKeyboardButton("🚀 JOIN SUPPORT CHAT", url=SUPPORT_CHAT_LINK)]]
+            keyboard = [[InlineKeyboardButton("\ud83d\ude80 JOIN SUPPORT CHAT", url=SUPPORT_CHAT_LINK)]]
             reply_markup = InlineKeyboardMarkup(keyboard)
             await update.message.reply_text(
-                f"❌ <b>You must join our Support Group to use this command!</b>\n\n"
-                f"👉 Click the button below to join, then try again.",
+                f"\u274c <b>You must join our Support Group to use this command!</b>\n\n"
+                f"\ud83d\udc49 Click the button below to join, then try again.",
                 parse_mode="HTML",
                 reply_markup=reply_markup
             )
@@ -601,7 +601,7 @@ async def hclaim_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         last_claim = user_data.get("last_hclaim", 0)
         now = time.time()
         if now - last_claim < 86400:
-            await update.message.reply_text("⏳ <b>You already claimed today!</b>\nCome back after next 24 hours.", parse_mode="HTML")
+            await update.message.reply_text("\u23f3 <b>You already claimed today!</b>\nCome back after next 24 hours.", parse_mode="HTML")
             return
 
     # Pick a random character from claimable rarities
@@ -613,7 +613,7 @@ async def hclaim_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     results = await characters_collection.aggregate(pipeline).to_list(length=1)
 
     if not results:
-        await update.message.reply_text("❌ No claimable characters found in the database.")
+        await update.message.reply_text("\u274c No claimable characters found in the database.")
         return
 
     char = results[0]
@@ -638,19 +638,19 @@ async def hclaim_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     })
 
     emoji_map = {
-        "Common": "🔵", "Uncommon": "🟣", "Rare": "🟠",
-        "Legendary": "🟡", "Mystical": "💮", "Divine": "⚜️",
-        "Crossverse": "⚡", "Supreme": "🪞", "Cataphract": "✨"
+        "Common": "\U0001f535", "Uncommon": "\U0001f7e3", "Rare": "\U0001f7e0",
+        "Legendary": "\U0001f7e1", "Mystical": "\U0001f4ae", "Divine": "\u269c\ufe0f",
+        "Crossverse": "\u26a1", "Supreme": "\U0001fa9e", "Cataphract": "\u2728"
     }
-    r_emoji = emoji_map.get(char.get('rarity', 'Common'), '💮')
+    r_emoji = emoji_map.get(char.get('rarity', 'Common'), '\U0001f4ae')
 
     text = (
-        f"🎁 <b>Harem Claim!</b>\n\n"
+        f"\U0001f381 <b>Harem Claim!</b>\n\n"
         f"<a href='tg://user?id={user.id}'>{escape_markdown(user.first_name)}</a> claimed:\n\n"
-        f"🏷️ <b>{escape_markdown(char['name'])}</b>\n"
-        f"🫧 Anime: {escape_markdown(char.get('anime', 'Unknown'))}\n"
+        f"\U0001f3f7\ufe0f <b>{escape_markdown(char['name'])}</b>\n"
+        f"\U0001fae7 Anime: {escape_markdown(char.get('anime', 'Unknown'))}\n"
         f"{r_emoji} Rarity: {char.get('rarity', 'Common')}\n"
-        f"🆔 ID: {char_id}"
+        f"\U0001f194 ID: {char_id}"
     )
 
     file_type = char.get('file_type', 'photo')
@@ -663,10 +663,10 @@ async def hclaim_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_photo(photo=char['file_id'], caption=text, parse_mode="HTML")
     except Exception as e:
         print(f"HCLAIM MEDIA ERROR: {e}")
-        await update.message.reply_text(text + f"\n\n⚠️ <i>Media failed to load (Possible invalid ID)</i>", parse_mode="HTML")
+        await update.message.reply_text(text + f"\n\n\u26a0\ufe0f <i>Media failed to load (Possible invalid ID)</i>", parse_mode="HTML")
         # Log character issue
         from bot.modules.admin import send_log
-        await send_log(context, f"⚠️ <b>Hclaim Media Error</b>\nChar: {char['name']} (ID: {char_id})\nError: <code>{e}</code>")
+        await send_log(context, f"\u26a0\ufe0f <b>Hclaim Media Error</b>\nChar: {char['name']} (ID: {char_id})\nError: <code>{e}</code>")
 
 async def todaygtop_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """GLOBAL TOP 10 USERS WITH MOST CHARACTERS CAUGHT TODAY."""
@@ -684,7 +684,7 @@ async def todaygtop_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     leaderboard_data = await captures_collection.aggregate(pipeline).to_list(length=10)
     
     if not leaderboard_data:
-        await update.message.reply_text("❌ No characters caught globally today yet!")
+        await update.message.reply_text("\u274c No characters caught globally today yet!")
         return
         
     text = "<b>GLOBAL TOP 10 CATCHERS (TODAY)</b>\n\n"
@@ -731,7 +731,7 @@ async def gtop_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     leaderboard_data = await captures_collection.aggregate(pipeline).to_list(length=10)
     
     if not leaderboard_data:
-        await update.message.reply_text("❌ No captures found in this group.")
+        await update.message.reply_text("\u274c No captures found in this group.")
         return
         
     text = f"<b>TOP 10 CATCHERS IN {html.escape(update.effective_chat.title)}</b>\n\n"
@@ -772,7 +772,7 @@ async def hdelete_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     user_data = await users_collection.find_one({"id": user.id})
     if not user_data or not user_data.get("waifus"):
-        await update.message.reply_text("❌ You don't have any waifus to delete!")
+        await update.message.reply_text("\u274c You don't have any waifus to delete!")
         return
 
     owned_waifus = user_data["waifus"]
@@ -790,7 +790,7 @@ async def hdelete_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 start = int(start_str)
                 end = int(end_str)
                 if end - start > 5000:
-                    await update.message.reply_text("❌ Range too large. Max 5000 at a time.")
+                    await update.message.reply_text("\u274c Range too large. Max 5000 at a time.")
                     return
                 for i in range(start, end + 1):
                     norm_val = str(i)
@@ -807,7 +807,7 @@ async def hdelete_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 actual_ids_to_delete.append(part)
 
     if not actual_ids_to_delete:
-        await update.message.reply_text("❌ You don't own any characters matching the provided IDs.")
+        await update.message.reply_text("\u274c You don't own any characters matching the provided IDs.")
         return
 
     await users_collection.update_one(
@@ -821,4 +821,4 @@ async def hdelete_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if norm_fav in actual_ids_to_delete:
             await users_collection.update_one({"id": user.id}, {"$unset": {"favorite": ""}})
             
-    await update.message.reply_text(f"✅ Successfully deleted {len(set(actual_ids_to_delete))} unique character(s) from your harem.")
+    await update.message.reply_text(f"\u2705 Successfully deleted {len(set(actual_ids_to_delete))} unique character(s) from your harem.")

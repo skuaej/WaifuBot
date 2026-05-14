@@ -48,7 +48,7 @@ async def cgrant_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     # Treat as View Collection request
                     user_data = await users_collection.find_one({"id": target_id})
                     if not user_data or not user_data.get("waifus"):
-                        await update.message.reply_text(f"❌ User <code>{target_id}</code> has no characters.", parse_mode="HTML")
+                        await update.message.reply_text(f"\u274c User <code>{target_id}</code> has no characters.", parse_mode="HTML")
                         return
                     
                     waifus = user_data["waifus"]
@@ -60,7 +60,7 @@ async def cgrant_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     if not char_names:
                         char_names = [f"• {wid}" for wid in waifus]
 
-                    msg = f"👤 <b>Collection for {target_id}</b>:\n\n" + "\n".join(char_names[:50])
+                    msg = f"\U0001f464 <b>Collection for {target_id}</b>:\n\n" + "\n".join(char_names[:50])
                     if len(char_names) > 50:
                         msg += f"\n\n<i>...and {len(char_names) - 50} more</i>"
                     
@@ -74,10 +74,10 @@ async def cgrant_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 target_user_id = int(context.args[-1])
                 char_queries = context.args[:-1]
             except ValueError:
-                await update.message.reply_text("❌ Target User ID must be numeric.")
+                await update.message.reply_text("\u274c Target User ID must be numeric.")
                 return
         else:
-            await update.message.reply_text("❌ Usage: <code>/cgrant &lt;IDs&gt; &lt;user_id&gt;</code>", parse_mode="HTML")
+            await update.message.reply_text("\u274c Usage: <code>/cgrant &lt;IDs&gt; &lt;user_id&gt;</code>", parse_mode="HTML")
             return
 
     # Parse char_queries (can be "1,2,3" or "10-20" or "single_id")
@@ -107,7 +107,7 @@ async def cgrant_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
             failed_queries.append(q)
 
     if not granted_chars:
-        await update.message.reply_text(f"❌ No characters found for queries: {', '.join(failed_queries[:10])}")
+        await update.message.reply_text(f"\u274c No characters found for queries: {', '.join(failed_queries[:10])}")
         return
 
     # Batch update
@@ -120,12 +120,12 @@ async def cgrant_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     names_list = ", ".join([f"<b>{escape_markdown(c['name'])}</b>" for c in granted_chars[:10]])
     count = len(granted_chars)
-    msg = f"✅ Granted {count} characters to " + (f"user <code>{target_user_id}</code>" if not reply_target else f"{escape_markdown(reply_target.first_name)}")
+    msg = f"\u2705 Granted {count} characters to " + (f"user <code>{target_user_id}</code>" if not reply_target else f"{escape_markdown(reply_target.first_name)}")
     msg += f"\n\nCharacters: {names_list}"
     if count > 10:
         msg += f"<i> and {count-10} others...</i>"
     
     if failed_queries:
-        msg += f"\n\n⚠️ Failed to find: {', '.join(failed_queries[:5])}"
+        msg += f"\n\n\u26a0\ufe0f Failed to find: {', '.join(failed_queries[:5])}"
 
     await update.message.reply_text(msg, parse_mode="HTML")

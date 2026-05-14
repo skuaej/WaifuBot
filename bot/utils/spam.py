@@ -40,7 +40,7 @@ async def check_and_warn_spam(chat_id: int, user_id: int, user_first_name: str, 
                 return True
             else:
                 try:
-                    await message.reply_text(f"⚠️ Don't Spam {user_first_name}...\nYour Messages Will be ignored for 10 Minutes...")
+                    await message.reply_text(f"\u26a0\ufe0f Don't Spam {user_first_name}...\nYour Messages Will be ignored for 10 Minutes...")
                 except Exception:
                     pass
                 warned_users[user_id] = now

@@ -16,8 +16,8 @@ RARITY_MAP = {
     "Medium": "Uncommon"
 }
 RARITY_EMOJI = {
-    "Common": "🔵", "Uncommon": "🟣", "Rare": "🟠", "Legendary": "🟡",
-    "Mystical": "💮", "Divine": "⚜️", "Crossverse": "⚡", "Supreme": "🪞", "Cataphract": "✨"
+    "Common": "\U0001f535", "Uncommon": "\U0001f7e3", "Rare": "\U0001f7e0", "Legendary": "\U0001f7e1",
+    "Mystical": "\U0001f4ae", "Divine": "\u269c\ufe0f", "Crossverse": "\u26a1", "Supreme": "\U0001fa9e", "Cataphract": "\u2728"
 }
 
 def clean_character_name(name: str) -> str:
@@ -91,24 +91,24 @@ async def check_admin(update: Update, power: str = None) -> bool:
     elif await is_sudo(user_id):
         return True
     if update.message:
-        await update.message.reply_text("❌ You don't have permission to use this command.")
+        await update.message.reply_text("\u274c You don't have permission to use this command.")
     return False
 
 async def check_owner(update: Update) -> bool:
     """Check if the user is the owner only (not sudo)."""
     if update.effective_user.id != OWNER_ID:
         if update.message:
-            await update.message.reply_text("❌ Only the bot owner can use this command.")
+            await update.message.reply_text("\u274c Only the bot owner can use this command.")
         return False
     return True
 
 def _build_sudo_keyboard(sudo_id: int, powers: list):
     """Build inline keyboard for managing sudo powers."""
     from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-    upload_status = "✅" if "upload" in powers else "❌"
-    delete_status = "✅" if "delete" in powers else "❌"
-    update_status = "✅" if "update" in powers else "❌"
-    bang_status = "✅" if "bang" in powers else "❌"
+    upload_status = "\u2705" if "upload" in powers else "\u274c"
+    delete_status = "\u2705" if "delete" in powers else "\u274c"
+    update_status = "\u2705" if "update" in powers else "\u274c"
+    bang_status = "\u2705" if "bang" in powers else "\u274c"
     
     keyboard = [
         [InlineKeyboardButton(f"{upload_status} Upload Power", callback_data=f"sudo_toggle_{sudo_id}_upload")],
@@ -116,7 +116,7 @@ def _build_sudo_keyboard(sudo_id: int, powers: list):
         [InlineKeyboardButton(f"{update_status} Update Power", callback_data=f"sudo_toggle_{sudo_id}_update")],
         [InlineKeyboardButton(f"{bang_status} Ban Power", callback_data=f"sudo_toggle_{sudo_id}_bang")],
         [InlineKeyboardButton("🗑️ Remove Sudo", callback_data=f"sudo_remove_{sudo_id}")],
-        [InlineKeyboardButton("✅ Done", callback_data="sudo_done")]
+        [InlineKeyboardButton("\u2705 Done", callback_data="sudo_done")]
     ]
     return InlineKeyboardMarkup(keyboard)
 
@@ -132,7 +132,7 @@ async def addsudo_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         sudo_id = int(context.args[0])
     except ValueError:
-        await update.message.reply_text("❌ Please provide a valid Telegram user ID.")
+        await update.message.reply_text("\u274c Please provide a valid Telegram user ID.")
         return
 
     existing = await sudos_collection.find_one({"user_id": sudo_id})
@@ -148,10 +148,10 @@ async def addsudo_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await sudos_collection.insert_one({"user_id": sudo_id, "powers": ["upload", "delete", "update", "bang"]})
     keyboard = _build_sudo_keyboard(sudo_id, ["upload", "delete", "update", "bang"])
     await update.message.reply_text(
-        f"✅ User <code>{sudo_id}</code> added as sudo.\n⚙️ Manage powers:",
+        f"\u2705 User <code>{sudo_id}</code> added as sudo.\n⚙️ Manage powers:",
         parse_mode="HTML", reply_markup=keyboard
     )
-    await send_log(context, f"👤 <b>Sudo Added</b>\nBy: {update.effective_user.first_name} (<code>{update.effective_user.id}</code>)\nTarget: <code>{sudo_id}</code>")
+    await send_log(context, f"\U0001f464 <b>Sudo Added</b>\nBy: {update.effective_user.first_name} (<code>{update.effective_user.id}</code>)\nTarget: <code>{sudo_id}</code>")
 
 async def resudo_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """/resudo <telegram_id> - Remove a sudo user (owner only)."""
@@ -165,15 +165,15 @@ async def resudo_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         sudo_id = int(context.args[0])
     except ValueError:
-        await update.message.reply_text("❌ Please provide a valid Telegram user ID.")
+        await update.message.reply_text("\u274c Please provide a valid Telegram user ID.")
         return
 
     result = await sudos_collection.delete_one({"user_id": sudo_id})
     if result.deleted_count > 0:
-        await update.message.reply_text(f"✅ User <code>{sudo_id}</code> has been removed from sudo.", parse_mode="HTML")
+        await update.message.reply_text(f"\u2705 User <code>{sudo_id}</code> has been removed from sudo.", parse_mode="HTML")
         await send_log(context, f"🗑️ <b>Sudo Removed</b>\nBy: {update.effective_user.first_name} (<code>{update.effective_user.id}</code>)\nTarget: <code>{sudo_id}</code>")
     else:
-        await update.message.reply_text(f"❌ User {sudo_id} is not a sudo.")
+        await update.message.reply_text(f"\u274c User {sudo_id} is not a sudo.")
 
 async def sudo_callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle inline button clicks for sudo power management."""
@@ -181,13 +181,13 @@ async def sudo_callback_handler(update: Update, context: ContextTypes.DEFAULT_TY
     user_id = query.from_user.id
 
     if user_id != OWNER_ID:
-        await query.answer("❌ Only the owner can manage sudos.", show_alert=True)
+        await query.answer("\u274c Only the owner can manage sudos.", show_alert=True)
         return
 
     data = query.data
 
     if data == "sudo_done":
-        await query.edit_message_text("✅ Sudo management complete.")
+        await query.edit_message_text("\u2705 Sudo management complete.")
         await query.answer()
         return
 
@@ -205,7 +205,7 @@ async def sudo_callback_handler(update: Update, context: ContextTypes.DEFAULT_TY
 
         sudo = await sudos_collection.find_one({"user_id": sudo_id})
         if not sudo:
-            await query.answer("❌ User is no longer a sudo.", show_alert=True)
+            await query.answer("\u274c User is no longer a sudo.", show_alert=True)
             return
 
         powers = sudo.get("powers", [])
@@ -275,7 +275,7 @@ async def forward_save_handler(update: Update, context: ContextTypes.DEFAULT_TYP
     if file_unique_id:
         existing = await characters_collection.find_one({"file_unique_id": file_unique_id})
         if existing:
-            await message.reply_text(f"⚠️ <b>Duplicate Detected!</b>\nThis image is already in the database as: <b>{existing['name']}</b> (ID: {existing['id']})", parse_mode="HTML")
+            await message.reply_text(f"\u26a0\ufe0f <b>Duplicate Detected!</b>\nThis image is already in the database as: <b>{existing['name']}</b> (ID: {existing['id']})", parse_mode="HTML")
             return
 
     # Must have a caption
@@ -287,7 +287,7 @@ async def forward_save_handler(update: Update, context: ContextTypes.DEFAULT_TYP
     print(f"[AUTO-SAVE] Caption: {caption[:80]}...")
 
     # Parse caption
-    anime_match = re.search(r"(?:🫧 Anime:|Anime:|➤ From:)\s*(.+)", caption, re.IGNORECASE)
+    anime_match = re.search(r"(?:\U0001fae7 Anime:|Anime:|➤ From:)\s*(.+)", caption, re.IGNORECASE)
     name_match = re.search(r"(?:🏖️ Character Name:|Character Name:|Name:)\s*(.+?)(?:\s*\[.+\])?(?:\n|$)", caption, re.IGNORECASE)
 
     if not name_match or not anime_match:
@@ -308,18 +308,18 @@ async def forward_save_handler(update: Update, context: ContextTypes.DEFAULT_TYP
             rarity = "Mystical"
 
     final_rarity = RARITY_MAP.get(rarity, rarity)
-    rem_emoji = RARITY_EMOJI.get(final_rarity, "💮")
+    rem_emoji = RARITY_EMOJI.get(final_rarity, "\U0001f4ae")
 
     # CATAPHRACT ENFORCEMENT: 
     # Cataphract (9) MUST be a video/document.
     # Others MUST be a photo.
     if final_rarity == "Cataphract":
         if file_type == "photo":
-            await message.reply_text(f"❌ <b>Cataphract</b> rarity requires a <b>Video</b> or <b>Document</b> upload.", parse_mode="HTML")
+            await message.reply_text(f"\u274c <b>Cataphract</b> rarity requires a <b>Video</b> or <b>Document</b> upload.", parse_mode="HTML")
             return
     else:
         if file_type != "photo":
-            await message.reply_text(f"❌ <b>{final_rarity}</b> rarity requires a <b>Photo</b> upload. Only <b>Cataphract</b> can be a video.", parse_mode="HTML")
+            await message.reply_text(f"\u274c <b>{final_rarity}</b> rarity requires a <b>Photo</b> upload. Only <b>Cataphract</b> can be a video.", parse_mode="HTML")
             return
 
     # Generate next ID
@@ -339,9 +339,9 @@ async def forward_save_handler(update: Update, context: ContextTypes.DEFAULT_TYP
     await characters_collection.insert_one(character)
     
     success_msg = (
-        f"✅ <b>Successfully Auto-Saved!</b>\n\n"
-        f"🏷️ <b>Name:</b> {escape_markdown(name)} (ID: {char_id})\n"
-        f"🫧 <b>Anime:</b> {escape_markdown(anime)}\n"
+        f"\u2705 <b>Successfully Auto-Saved!</b>\n\n"
+        f"\U0001f3f7\ufe0f <b>Name:</b> {escape_markdown(name)} (ID: {char_id})\n"
+        f"\U0001fae7 <b>Anime:</b> {escape_markdown(anime)}\n"
         f"{rem_emoji} <b>Rarity:</b> {final_rarity}"
     )
     
@@ -406,7 +406,7 @@ async def channel_post_handler(update: Update, context: ContextTypes.DEFAULT_TYP
         return
 
     # Parse caption
-    anime_match = re.search(r"(?:🫧 Anime:|Anime:|➤ From:)\s*(.+)", caption, re.IGNORECASE)
+    anime_match = re.search(r"(?:\U0001fae7 Anime:|Anime:|➤ From:)\s*(.+)", caption, re.IGNORECASE)
     name_match = re.search(r"(?:🏖️ Character Name:|Character Name:|Name:)\s*(.+?)(?:\s*\[.+\])?(?:\n|$)", caption, re.IGNORECASE)
     
     if name_match and anime_match:
@@ -424,7 +424,7 @@ async def channel_post_handler(update: Update, context: ContextTypes.DEFAULT_TYP
                 rarity = "Mystical"
 
         final_rarity = RARITY_MAP.get(rarity, rarity)
-        rem_emoji = RARITY_EMOJI.get(final_rarity, "💮")
+        rem_emoji = RARITY_EMOJI.get(final_rarity, "\U0001f4ae")
 
         # CATAPHRACT ENFORCEMENT
         if final_rarity == "Cataphract":
@@ -495,7 +495,7 @@ async def upload_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
              await message.reply_text("Original message has no caption. Please provide manual arguments.")
              return
              
-        anime_match = re.search(r"(?:🫧 Anime:|Anime:|➤ From:)\s*(.+)", caption, re.IGNORECASE)
+        anime_match = re.search(r"(?:\U0001fae7 Anime:|Anime:|➤ From:)\s*(.+)", caption, re.IGNORECASE)
         name_match = re.search(r"(?:🏖️ Character Name:|Character Name:|Name:)\s*(.+?)(?:\s*\[.+\])?(?:\n|$)", caption, re.IGNORECASE)
         
         if not name_match or not anime_match:
@@ -533,20 +533,20 @@ async def upload_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if file_unique_id:
         existing = await characters_collection.find_one({"file_unique_id": file_unique_id})
         if existing:
-            await message.reply_text(f"⚠️ <b>Duplicate Detected!</b>\nThis image is already in the database as: <b>{existing['name']}</b> (ID: {existing['id']})", parse_mode="HTML")
+            await message.reply_text(f"\u26a0\ufe0f <b>Duplicate Detected!</b>\nThis image is already in the database as: <b>{existing['name']}</b> (ID: {existing['id']})", parse_mode="HTML")
             return
 
     final_rarity = RARITY_MAP.get(rarity, rarity)
-    rem_emoji = RARITY_EMOJI.get(final_rarity, "💮")
+    rem_emoji = RARITY_EMOJI.get(final_rarity, "\U0001f4ae")
 
     # CATAPHRACT ENFORCEMENT
     if final_rarity == "Cataphract":
         if file_type == "photo":
-            await message.reply_text(f"❌ <b>Cataphract</b> rarity requires a <b>Video</b> or <b>Document</b> upload.", parse_mode="HTML")
+            await message.reply_text(f"\u274c <b>Cataphract</b> rarity requires a <b>Video</b> or <b>Document</b> upload.", parse_mode="HTML")
             return
     else:
         if file_type != "photo":
-            await message.reply_text(f"❌ <b>{final_rarity}</b> rarity requires a <b>Photo</b> upload. Only <b>Cataphract</b> can be a video.", parse_mode="HTML")
+            await message.reply_text(f"\u274c <b>{final_rarity}</b> rarity requires a <b>Photo</b> upload. Only <b>Cataphract</b> can be a video.", parse_mode="HTML")
             return
 
     char_id = await get_next_char_id()
@@ -566,9 +566,9 @@ async def upload_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await characters_collection.insert_one(character)
     
     success_msg = (
-        f"✅ <b>Successfully Uploaded!</b>\n\n"
-        f"🏷️ <b>Name:</b> {escape_markdown(name)} (ID: {char_id})\n"
-        f"🫧 <b>Anime:</b> {escape_markdown(anime)}\n"
+        f"\u2705 <b>Successfully Uploaded!</b>\n\n"
+        f"\U0001f3f7\ufe0f <b>Name:</b> {escape_markdown(name)} (ID: {char_id})\n"
+        f"\U0001fae7 <b>Anime:</b> {escape_markdown(anime)}\n"
         f"{rem_emoji} <b>Rarity:</b> {final_rarity}"
     )
     if char_type:
@@ -647,7 +647,7 @@ async def delete_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     actual_ids_to_delete.add(char['id'])
 
     if not actual_ids_to_delete:
-        await update.message.reply_text("❌ No characters found matching the provided IDs.")
+        await update.message.reply_text("\u274c No characters found matching the provided IDs.")
         return
 
     target_list = list(actual_ids_to_delete)
@@ -666,10 +666,10 @@ async def delete_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
             {"$unset": {"favorite": ""}}
         )
 
-        await update.message.reply_text(f"✅ Successfully deleted {res.deleted_count} character(s) and updated user harems.")
+        await update.message.reply_text(f"\u2705 Successfully deleted {res.deleted_count} character(s) and updated user harems.")
         await send_log(context, f"🗑️ <b>Characters Deleted</b>\nBy: {update.effective_user.first_name} (<code>{update.effective_user.id}</code>)\nCount: {res.deleted_count}\nIDs: <code>{', '.join(list(target_list)[:20])}{'...' if len(target_list) > 20 else ''}</code>")
     else:
-        await update.message.reply_text("❌ Failed to delete characters.")
+        await update.message.reply_text("\u274c Failed to delete characters.")
 
 async def stats_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """/stats or /total - Owner command to see character counts by rarity and totals."""
@@ -687,12 +687,12 @@ async def stats_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     from bot.database.mongo import groups_collection
     total_groups = await groups_collection.count_documents({})
     
-    text = "📊 <b>Bot Statistics</b>\n\n"
+    text = "\U0001f4ca <b>Bot Statistics</b>\n\n"
     text += f"👥 <b>Total Users:</b> {total_users}\n"
     text += f"🏠 <b>Total Groups:</b> {total_groups}\n"
-    text += f"🏷️ <b>Total Characters:</b> {total_chars}\n\n"
+    text += f"\U0001f3f7\ufe0f <b>Total Characters:</b> {total_chars}\n\n"
     
-    text += "✨ <b>Rarity Breakdown:</b>\n"
+    text += "\u2728 <b>Rarity Breakdown:</b>\n"
     # Sort by my defined rarity order if possible, or just alphabetically
     sorted_counts = sorted(rarity_counts, key=lambda x: x["count"], reverse=True)
     for rc in sorted_counts:
@@ -734,7 +734,7 @@ async def broadcast_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         except Exception as e:
             failed_sends += 1
 
-    await msg.edit_text(f"✅ Broadcast complete. Failed to send to {failed_sends} chats/users.")
+    await msg.edit_text(f"\u2705 Broadcast complete. Failed to send to {failed_sends} chats/users.")
 
 async def changetime_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """/changetime <number_of_messages>"""
@@ -791,7 +791,7 @@ async def ping_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Check permissions
     user_id = update.effective_user.id
     if not await is_sudo(user_id):
-        await update.message.reply_text("❌ This is a Sudo only command!")
+        await update.message.reply_text("\u274c This is a Sudo only command!")
         return
 
     # 1. Telegram Latency
@@ -851,7 +851,7 @@ async def enable_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     
     status = "ENABLED" if enabled else "DISABLED"
-    await update.message.reply_text(f"✅ Games have been {status} globally.")
+    await update.message.reply_text(f"\u2705 Games have been {status} globally.")
     await send_log(context, f"⚙️ <b>Global Toggle</b>\nBy: {update.effective_user.first_name}\nGames: {status}")
 
 async def spwanglobal_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -874,7 +874,7 @@ async def spwanglobal_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     
     status = "ENABLED" if enabled else "DISABLED"
-    await update.message.reply_text(f"🚀 Global spawning has been {status} across all groups.")
+    await update.message.reply_text(f"\ud83d\ude80 Global spawning has been {status} across all groups.")
     await send_log(context, f"⚙️ <b>Global Spawn Toggle</b>\nBy: {update.effective_user.first_name}\nSpawning: {status}")
 
 
@@ -888,12 +888,12 @@ async def sudolist_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("There are no sudo users yet.")
         return
         
-    text = "👤 <b>SUDO USERS LIST</b>\n\n"
+    text = "\U0001f464 <b>SUDO USERS LIST</b>\n\n"
     for s in sudos:
         uid = s.get("user_id")
         powers = s.get("powers", [])
         powers_str = ", ".join(powers) if powers else "No specific powers"
-        text += f"➥ <code>{uid}</code> [ {powers_str} ]\n"
+        text += f"\u27a5 <code>{uid}</code> [ {powers_str} ]\n"
         
     await update.message.reply_text(text, parse_mode="HTML")
 async def transfer_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -909,12 +909,12 @@ async def transfer_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         old_id = int(context.args[0])
         new_id = int(context.args[1])
     except ValueError:
-        await update.message.reply_text("❌ IDs must be numeric.")
+        await update.message.reply_text("\u274c IDs must be numeric.")
         return
         
     old_user = await users_collection.find_one({"id": old_id})
     if not old_user or not old_user.get("waifus"):
-        await update.message.reply_text(f"❌ User <code>{old_id}</code> has no collection.", parse_mode="HTML")
+        await update.message.reply_text(f"\u274c User <code>{old_id}</code> has no collection.", parse_mode="HTML")
         return
         
     waifus_to_transfer = old_user["waifus"]
@@ -930,7 +930,7 @@ async def transfer_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await users_collection.delete_one({"id": old_id})
     
     await update.message.reply_text(
-        f"✅ Successfully transferred {len(waifus_to_transfer)} waifus from <code>{old_id}</code> to <code>{new_id}</code>.\n"
+        f"\u2705 Successfully transferred {len(waifus_to_transfer)} waifus from <code>{old_id}</code> to <code>{new_id}</code>.\n"
         f"🗑️ Old account <code>{old_id}</code> data deleted.",
         parse_mode="HTML"
     )
@@ -948,14 +948,14 @@ async def transfercheck_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         target_id = int(context.args[0])
     except ValueError:
-        await update.message.reply_text("❌ ID must be numeric.")
+        await update.message.reply_text("\u274c ID must be numeric.")
         return
         
     user = await users_collection.find_one({"id": target_id})
     if user and user.get("waifus"):
-        await update.message.reply_text(f"📝 User <code>{target_id}</code> has {len(user['waifus'])} characters.", parse_mode="HTML")
+        await update.message.reply_text(f"\U0001f4dd User <code>{target_id}</code> has {len(user['waifus'])} characters.", parse_mode="HTML")
     else:
-        await update.message.reply_text(f"❌ User <code>{target_id}</code> not found or has no collection.", parse_mode="HTML")
+        await update.message.reply_text(f"\u274c User <code>{target_id}</code> not found or has no collection.", parse_mode="HTML")
 
 async def bang_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """/bang <id> - Permanently ban a user (Owner/Sudo with ban power)."""
@@ -970,14 +970,14 @@ async def bang_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         user_id = int(context.args[0])
     except ValueError:
-        await update.message.reply_text("❌ User ID must be numeric.")
+        await update.message.reply_text("\u274c User ID must be numeric.")
         return
         
     bans_col = db['bans']
     await bans_col.update_one({"user_id": user_id}, {"$set": {"banned_at": time.time()}}, upsert=True)
     
-    await update.message.reply_text(f"🚫 User <code>{user_id}</code> has been PERMANENTLY BANNED.", parse_mode="HTML")
-    await send_log(context, f"🚫 <b>Global Ban</b>\nBy:Owner\nTarget: <code>{user_id}</code>")
+    await update.message.reply_text(f"\U0001f6ab User <code>{user_id}</code> has been PERMANENTLY BANNED.", parse_mode="HTML")
+    await send_log(context, f"\U0001f6ab <b>Global Ban</b>\nBy:Owner\nTarget: <code>{user_id}</code>")
 
 async def unbang_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """/unbang <id> - Remove permanent ban (Owner/Sudo with ban power)."""
@@ -992,16 +992,16 @@ async def unbang_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         user_id = int(context.args[0])
     except ValueError:
-        await update.message.reply_text("❌ User ID must be numeric.")
+        await update.message.reply_text("\u274c User ID must be numeric.")
         return
         
     bans_col = db['bans']
     result = await bans_col.delete_one({"user_id": user_id})
     
     if result.deleted_count > 0:
-        await update.message.reply_text(f"✅ User <code>{user_id}</code> unbanned.", parse_mode="HTML")
+        await update.message.reply_text(f"\u2705 User <code>{user_id}</code> unbanned.", parse_mode="HTML")
     else:
-        await update.message.reply_text("❌ User is not banned.")
+        await update.message.reply_text("\u274c User is not banned.")
 
 async def update_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """/update <id> [name] [series] [rarity] [type] - Update character metadata/image."""
@@ -1015,7 +1015,7 @@ async def update_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     char_id = context.args[0]
     char = await characters_collection.find_one({"id": char_id})
     if not char:
-        await update.message.reply_text(f"❌ Character ID {char_id} not found.")
+        await update.message.reply_text(f"\u274c Character ID {char_id} not found.")
         return
         
     update_data = {}
@@ -1052,7 +1052,7 @@ async def update_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
     await characters_collection.update_one({"id": char_id}, {"$set": update_data})
     
-    await update.message.reply_text(f"✅ Character <code>{char_id}</code> updated successfully.", parse_mode="HTML")
+    await update.message.reply_text(f"\u2705 Character <code>{char_id}</code> updated successfully.", parse_mode="HTML")
     
     # 3. Log with media preview
     current_char = await characters_collection.find_one({"id": char_id})
@@ -1060,7 +1060,7 @@ async def update_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     file_type = current_char.get("file_type", "photo")
     
     log_text = (
-        f"📝 <b>Character Updated</b>\n"
+        f"\U0001f4dd <b>Character Updated</b>\n"
         f"By: {update.effective_user.first_name} (<code>{update.effective_user.id}</code>)\n"
         f"ID: <code>{char_id}</code>\n\n"
         f"<b>New Details:</b>\n"
