@@ -502,7 +502,12 @@ async def check_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         {"$match": {"waifus": {"$in": [norm_id, char_id]}}},
         {"$unwind": "$waifus"},
         {"$match": {"waifus": {"$in": [norm_id, char_id]}}},
-        {"$group": {"_id": "$id", "count": {"$sum": 1}}},
+        {"$group": {
+            "_id": "$id", 
+            "count": {"$sum": 1},
+            "name": {"$first": "$name"},
+            "first_name": {"$first": "$first_name"}
+        }},
         {"$sort": {"count": -1}},
         {"$limit": 10}
     ]
@@ -566,7 +571,8 @@ async def check_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if not user_data:
                 user_data = await users_collection.find_one({"id": str(uid)})
             
-            uname = escape_markdown(user_data.get('name') or user_data.get('first_name') or 'Unknown')
+            # Use name from entry if find_one failed or to save queries
+            uname = escape_markdown(user_data.get('name') or user_data.get('first_name') or entry.get('name') or entry.get('first_name') or 'Unknown')
             text += f"\u27a5 <a href='tg://user?id={uid}'>{uname}</a> (<code>{uid}</code>) x{count}\n"
         text += "\n"
 
@@ -580,7 +586,8 @@ async def check_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if not user_data:
                 user_data = await users_collection.find_one({"id": str(uid)})
             
-            uname = escape_markdown(user_data.get('name') or user_data.get('first_name') or 'Unknown')
+            # Use name from entry if find_one failed or to save queries
+            uname = escape_markdown(user_data.get('name') or user_data.get('first_name') or entry.get('name') or entry.get('first_name') or 'Unknown')
             text += f"\u27a5 <a href='tg://user?id={uid}'>{uname}</a> (<code>{uid}</code>) x{count}\n"
         
     try:
