@@ -489,28 +489,50 @@ async def check_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
         
     char_id = char['id']
+    # Normalize ID for robust matching in captures and users collections
+    norm_id = str(int(char_id)) if char_id.isdigit() else char_id
+    
     rarity = char.get('rarity', 'Common')
     from bot.utils.formatters import get_stylized_rarity
     stylized_rarity = get_stylized_rarity(rarity)
     
-    # 1. Global Top 10
+    # 1. Global Top 10 (Using normalized ID)
     global_pipeline = [
-        {"$match": {"char_id": char_id}},
+        {"$match": {"char_id": norm_id}},
         {"$group": {"_id": "$user_id", "count": {"$sum": 1}}},
         {"$sort": {"count": -1}},
         {"$limit": 10}
     ]
     global_results = await captures_collection.aggregate(global_pipeline).to_list(length=10)
 
-    # 2. Local Chat Top 10
+    # 2. Local Chat Top 10 (Using normalized ID)
     chat_id = update.effective_chat.id
     local_pipeline = [
-        {"$match": {"char_id": char_id, "chat_id": chat_id}},
+        {"$match": {"char_id": norm_id, "chat_id": chat_id}},
         {"$group": {"_id": "$user_id", "count": {"$sum": 1}}},
         {"$sort": {"count": -1}},
         {"$limit": 10}
     ]
     local_results = await captures_collection.aggregate(local_pipeline).to_list(length=10)
+    
+    # 3. Total Globally Caught Count (from users' harems for accuracy)
+    # This counts every single instance of this character in anyone's collection
+    user_pipeline = [
+        {"$match": {"waifus": {"$in": [norm_id, char_id]}}},
+        {"$project": {
+            "count": {
+                "$size": {
+                    "$filter": {
+                        "input": {"$ifNull": ["$waifus", []]},
+                        "as": "w",
+                        "cond": {"$in": ["$$w", [norm_id, char_id]]}
+                    }
+                }
+            }
+        }}
+    ]
+    users_with_char = await users_collection.aggregate(user_pipeline).to_list(length=None)
+    total_global_caught = sum(u.get('count', 0) for u in users_with_char)
     
     # Handle Type (optional)
     char_type = char.get('type')
@@ -521,12 +543,14 @@ async def check_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         type_line = f"\n{t_emoji}<b><i>{char_type}</i></b>{t_emoji}\n"
 
     # BUILD MESSAGE
+    globe_emoji = "\U0001f310" # 🌐
     text = (
         f"OwO! Check out this character!\n\n"
         f"<b>{escape_markdown(char['anime'])}</b>\n"
         f"{char['id']}: {escape_markdown(char['name'])}\n"
         f"{stylized_rarity}\n"
         f"{type_line}\n"
+        f"{globe_emoji} <b>Globally Caught:</b> {total_global_caught} Times\n\n"
     )
 
     # Global Top 10 Section
@@ -567,9 +591,10 @@ async def check_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         # Fallback to text-only if file_id is invalid (common after switching bots)
         await update.message.reply_text(
-            text + "\n\n\u26a0\ufe0f <b>Media Error:</b> The file ID for this character is invalid for the current bot. Please re-upload this character.",
+            text + f"\n\n\u26a0\ufe0f <b>Media Error:</b> The file ID for this character is invalid for the current bot. Please re-upload this character.",
             parse_mode="HTML"
         )
+
 
 
 async def hclaim_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
