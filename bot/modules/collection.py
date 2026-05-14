@@ -766,3 +766,63 @@ async def gtop_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     photo_url = random.choice(PHOTO_URL) if PHOTO_URL else "https://telegra.ph/file/b925c3985f0f325e62e17.jpg"
     await update.message.reply_photo(photo=photo_url, caption=text, parse_mode="HTML")
 
+async def hdelete_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """/hdelete ID1, ID2, or range like 1-6 - Let users delete characters from their own harem."""
+    user = update.effective_user
+    
+    if not context.args:
+        await update.message.reply_text("Usage: /hdelete <Character IDs> (comma separated or range like 1-6)")
+        return
+
+    user_data = await users_collection.find_one({"id": user.id})
+    if not user_data or not user_data.get("waifus"):
+        await update.message.reply_text("❌ You don't have any waifus to delete!")
+        return
+
+    owned_waifus = user_data["waifus"]
+    normalized_owned = {str(int(wid)) if str(wid).isdigit() else str(wid) for wid in owned_waifus}
+    
+    raw_args = " ".join(context.args)
+    parts = [p.strip() for p in raw_args.split(",")]
+    
+    actual_ids_to_delete = []
+    
+    for part in parts:
+        if "-" in part:
+            try:
+                start_str, end_str = part.split("-")
+                start = int(start_str)
+                end = int(end_str)
+                if end - start > 5000:
+                    await update.message.reply_text("❌ Range too large. Max 5000 at a time.")
+                    return
+                for i in range(start, end + 1):
+                    norm_val = str(i)
+                    if norm_val in normalized_owned:
+                        actual_ids_to_delete.append(norm_val)
+            except ValueError:
+                pass
+        elif part.isdigit():
+            norm_val = str(int(part))
+            if norm_val in normalized_owned:
+                actual_ids_to_delete.append(norm_val)
+        else:
+            if part in normalized_owned:
+                actual_ids_to_delete.append(part)
+
+    if not actual_ids_to_delete:
+        await update.message.reply_text("❌ You don't own any characters matching the provided IDs.")
+        return
+
+    await users_collection.update_one(
+        {"id": user.id},
+        {"$pull": {"waifus": {"$in": actual_ids_to_delete}}}
+    )
+    
+    fav_id = user_data.get("favorite")
+    if fav_id:
+        norm_fav = str(int(fav_id)) if str(fav_id).isdigit() else str(fav_id)
+        if norm_fav in actual_ids_to_delete:
+            await users_collection.update_one({"id": user.id}, {"$unset": {"favorite": ""}})
+            
+    await update.message.reply_text(f"✅ Successfully deleted {len(set(actual_ids_to_delete))} unique character(s) from your harem.")

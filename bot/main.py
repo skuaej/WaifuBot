@@ -30,7 +30,7 @@ from bot.modules.capture import capture_cmd
 from bot.modules.collection import (
     harem_cmd, profile_cmd, top_cmd, fav_cmd, 
     check_cmd, hmode_cmd, collection_callback_handler, hclaim_cmd, fav_callback_handler,
-    topgroups_cmd, gtop_cmd, todaygtop_cmd
+    topgroups_cmd, gtop_cmd, todaygtop_cmd, hdelete_cmd
 )
 from bot.modules.trade import trade_cmd, gift_cmd, accept_cmd, reset_cmd, gift_callback_handler, trade_callback_handler
 from bot.modules.economy import balance_cmd, bonus_cmd, transfer_cmd
@@ -47,7 +47,7 @@ BOT_COMMANDS = {
     "trade", "accept", "reset", "gift", "balance", "bonus", "transfer", "smash", "cancel",
     "upload", "delete", "broadcast", "changetime", "timepower", "spwanglobal", "addsudo", "sudo", "resudo",
     "stats", "total", "ping", "pin", "pinf", "cgrant", "sudolist", "transfercheck", "bang", "unbang", "update",
-    "hclaim", "claim", "search"
+    "hclaim", "claim", "search", "hdelete"
 }
 
 # Logging setup
@@ -215,6 +215,7 @@ def main():
     application.add_handler(CommandHandler("fav", fav_cmd))
     application.add_handler(CommandHandler("hmode", hmode_cmd))
     application.add_handler(CommandHandler("check", check_cmd))
+    application.add_handler(CommandHandler("hdelete", hdelete_cmd))
     application.add_handler(CallbackQueryHandler(gift_callback_handler, pattern="^gift_"))
     application.add_handler(CallbackQueryHandler(sudo_callback_handler, pattern="^sudo_"))
     application.add_handler(CallbackQueryHandler(game_callback_handler, pattern="^smash_"))
