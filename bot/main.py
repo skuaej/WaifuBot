@@ -33,7 +33,8 @@ from bot.modules.collection import (
     topgroups_cmd, gtop_cmd, todaygtop_cmd, hdelete_cmd
 )
 from bot.modules.trade import trade_cmd, gift_cmd, accept_cmd, reset_cmd, gift_callback_handler, trade_callback_handler
-from bot.modules.economy import balance_cmd, bonus_cmd, transfer_cmd
+from bot.modules.economy import balance_cmd, bonus_cmd, pay_cmd
+from bot.modules.p2p import sell_cmd, mysells_cmd, p2p_buy_callback_handler
 from bot.modules.search import inline_query, search_cmd
 from bot.modules.gift import cgrant_cmd
 from bot.modules.help import help_cmd, help_callback_handler
@@ -44,10 +45,10 @@ from bot.web import start_server
 BOT_COMMANDS = {
     "start", "help", "enable", "grab", "guess", "catch", "hug",
     "harem", "profile", "top", "gtop", "todaygtop", "topgroups", "fav", "hmode", "check",
-    "trade", "accept", "reset", "gift", "daily", "balance", "bonus", "transfer", "smash", "cancel",
+    "trade", "accept", "reset", "gift", "daily", "balance", "bonus", "pay", "transfer", "smash", "cancel",
     "upload", "delete", "broadcast", "changetime", "timepower", "spwanglobal", "addsudo", "sudo", "resudo",
     "stats", "total", "ping", "pin", "pinf", "cgrant", "sudolist", "transfercheck", "bang", "unbang", "update",
-    "hclaim", "claim", "search", "hdelete"
+    "hclaim", "claim", "search", "hdelete", "sell", "mysells"
 }
 
 # Logging setup
@@ -231,9 +232,14 @@ def main():
     application.add_handler(CommandHandler("gift", gift_cmd))
     application.add_handler(CommandHandler("balance", balance_cmd))
     application.add_handler(CommandHandler("bonus", bonus_cmd))
-    application.add_handler(CommandHandler("transfer", transfer_cmd))
+    application.add_handler(CommandHandler("pay", pay_cmd))
     application.add_handler(CommandHandler("smash", smash_cmd))
     application.add_handler(CommandHandler("cancel", cancel_cmd))
+
+    # P2P Market
+    application.add_handler(CallbackQueryHandler(p2p_buy_callback_handler, pattern="^p2p_buy_"))
+    application.add_handler(CommandHandler("sell", sell_cmd))
+    application.add_handler(CommandHandler("mysells", mysells_cmd))
     
     # Admin
     application.add_handler(CommandHandler("upload", upload_cmd))
@@ -247,7 +253,7 @@ def main():
     application.add_handler(CommandHandler(["ping", "pin", "pinf"], ping_cmd))
     application.add_handler(CommandHandler("cgrant", cgrant_cmd))
     application.add_handler(CommandHandler("sudolist", sudolist_cmd))
-    application.add_handler(CommandHandler("transfer", transfer_cmd))
+    application.add_handler(CommandHandler("transfer", transfer_cmd))  # admin harem transfer only
     application.add_handler(CommandHandler("transfercheck", transfercheck_cmd))
     application.add_handler(CommandHandler("bang", bang_cmd))
     application.add_handler(CommandHandler("unbang", unbang_cmd))

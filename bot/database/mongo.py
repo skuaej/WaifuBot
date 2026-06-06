@@ -15,6 +15,7 @@ captures_collection = db['captures']
 sudos_collection = db['sudos']
 settings_collection = db['settings']
 blocks_collection = db['blocks']
+p2p_sales_collection = db['p2p_sales']
 
 async def init_db():
     """
@@ -34,4 +35,9 @@ async def init_db():
     await captures_collection.create_index("char_id")
     await captures_collection.create_index("timestamp")
     
+    await p2p_sales_collection.create_index("sale_id", unique=True)
+    await p2p_sales_collection.create_index("seller_id")
+    await p2p_sales_collection.create_index("status")
+    
     print("Database initialized successfully with performance indexes.")
+
