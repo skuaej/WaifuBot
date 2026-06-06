@@ -17,6 +17,8 @@ from bot.database.mongo import (
     characters_collection,
     p2p_sales_collection,
 )
+from bot.config import LOG_CHAT_ID
+
 
 P2P_CHANNEL_ID = -1003395328648
 
@@ -204,7 +206,7 @@ async def p2p_buy_callback_handler(update: Update, context: ContextTypes.DEFAULT
     """Handle 🛒 BUY button press from the P2P channel."""
     query = update.callback_query
     buyer = query.from_user
-    await query.answer()
+    # NOTE: do NOT call query.answer() here early — we need show_alert for errors/success below.
 
     data = query.data  # "p2p_buy_<sale_id>"
     sale_id = data[len("p2p_buy_"):]
@@ -296,7 +298,27 @@ async def p2p_buy_callback_handler(update: Update, context: ContextTypes.DEFAULT
     except BadRequest:
         pass  # Message might have been deleted; proceed anyway
 
-    # Notify buyer in the channel message context
+    # Send sold log to log channel
+    try:
+        await context.bot.send_message(
+            chat_id=LOG_CHAT_ID,
+            text=(
+                f"🛒 <b>P2P Sale Completed</b>\n\n"
+                f"📛 <b>Character:</b> {html.escape(listing.get('char_name', '?'))} "
+                f"[<code>{html.escape(char_id)}</code>]\n"
+                f"{r_emoji} <b>Rarity:</b> {html.escape(rarity)}\n"
+                f"💰 <b>Price:</b> {price} coins\n"
+                f"👤 <b>Seller:</b> {html.escape(listing.get('seller_name', '?'))} "
+                f"[<code>{listing['seller_id']}</code>]\n"
+                f"🛍️ <b>Buyer:</b> {html.escape(buyer.first_name)} "
+                f"[<code>{buyer.id}</code>]"
+            ),
+            parse_mode="HTML",
+        )
+    except Exception:
+        pass  # Log failure should never block the transaction
+
+    # Notify buyer with success alert
     await query.answer(
         f"✅ Purchase successful!\n{listing.get('char_name','?')} is now in your harem.",
         show_alert=True

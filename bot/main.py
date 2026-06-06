@@ -223,8 +223,16 @@ def main():
     application.add_handler(CallbackQueryHandler(help_callback_handler, pattern="^(start_|help_)"))
     application.add_handler(CallbackQueryHandler(trade_callback_handler, pattern="^trade_"))
     application.add_handler(CallbackQueryHandler(fav_callback_handler, pattern="^fav_"))
+    # P2P market buy callback — MUST be before catch-all collection_callback_handler
+    application.add_handler(CallbackQueryHandler(p2p_buy_callback_handler, pattern="^p2p_buy_"))
+    # Silently ack the disabled SOLD button so Telegram doesn't show an error spinner
+    application.add_handler(CallbackQueryHandler(
+        lambda u, c: u.callback_query.answer(), pattern="^p2p_sold_noop$"
+    ))
     application.add_handler(CallbackQueryHandler(collection_callback_handler))
-    
+
+
+
     # Trade & Economy
     application.add_handler(CommandHandler("trade", trade_cmd))
     application.add_handler(CommandHandler("accept", accept_cmd))
@@ -236,11 +244,11 @@ def main():
     application.add_handler(CommandHandler("smash", smash_cmd))
     application.add_handler(CommandHandler("cancel", cancel_cmd))
 
-    # P2P Market
-    application.add_handler(CallbackQueryHandler(p2p_buy_callback_handler, pattern="^p2p_buy_"))
+    # P2P Market Commands
     application.add_handler(CommandHandler("sell", sell_cmd))
     application.add_handler(CommandHandler("mysells", mysells_cmd))
     
+
     # Admin
     application.add_handler(CommandHandler("upload", upload_cmd))
     application.add_handler(CommandHandler("delete", delete_cmd))
