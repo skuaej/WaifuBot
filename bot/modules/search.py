@@ -196,7 +196,7 @@ async def inline_query(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     match = re.search(r"\[(\W+)\]", name)
                     t_emoji = match.group(1) if match else "\U0001f4a0"
                     if is_event:
-                        type_line = f"\n<b><i>{char_type}</i></b>{t_emoji}\n"
+                        type_line = f"\n<b><i>{char_type}</i></b>\n"
                     else:
                         type_line = f"\n{t_emoji}<b><i>{char_type}</i></b>{t_emoji}\n"
 

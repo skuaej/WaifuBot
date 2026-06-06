@@ -1082,9 +1082,22 @@ async def group_status_update_handler(update: Update, context: ContextTypes.DEFA
     
     if old_status in ["left", "kicked"] and new_status in ["member", "administrator"]:
         # Bot was added
+        group_link = ""
+        if chat.username:
+            group_link = f"https://t.me/{chat.username}"
+            link_display = f"<a href='{group_link}'>{html.escape(chat.title)}</a>"
+        else:
+            try:
+                group_link = await context.bot.export_chat_invite_link(chat.id)
+                link_display = f"<a href='{group_link}'>{html.escape(chat.title)}</a>"
+            except Exception:
+                group_link = "Private Group (No invite link permission)"
+                link_display = f"<b>{html.escape(chat.title)}</b> (Private)"
+
         log_text = (
             f"➕ <b>Bot Added to Group</b>\n"
-            f"<b>Group:</b> {chat.title} (<code>{chat.id}</code>)\n"
+            f"<b>Group:</b> {link_display} (<code>{chat.id}</code>)\n"
+            f"<b>Link:</b> {group_link}\n"
             f"<b>By:</b> {user.first_name} (<code>{user.id}</code>)"
         )
         await send_log(context, log_text)
@@ -1101,7 +1114,7 @@ async def group_status_update_handler(update: Update, context: ContextTypes.DEFA
         # Bot was removed
         log_text = (
             f"➖ <b>Bot Removed from Group</b>\n"
-            f"<b>Group:</b> {chat.title} (<code>{chat.id}</code>)\n"
+            f"<b>Group:</b> <b>{html.escape(chat.title)}</b> (<code>{chat.id}</code>)\n"
             f"<b>By:</b> {user.first_name} (<code>{user.id}</code>)"
         )
         await send_log(context, log_text)
