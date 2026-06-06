@@ -254,14 +254,14 @@ async def inline_query(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 input_message_content=InputTextMessageContent(caption, parse_mode="HTML")
             ))
 
-    cache_time = 300 if search_harem else 10 # Increased from 1s to 10s to reduce Koyeb load
+    cache_time = 0 if search_harem else 10
     
     if not results:
         results.append(InlineQueryResultArticle(
             id=str(uuid.uuid4()), title="No characters found",
             input_message_content=InputTextMessageContent("Try searching for something else! OwO")
         ))
-        cache_time = 1
+        cache_time = 0 if search_harem else 1
 
     try:
         await update.inline_query.answer(results, cache_time=cache_time, is_personal=True)
