@@ -188,13 +188,21 @@ async def inline_query(update: Update, context: ContextTypes.DEFAULT_TYPE):
             else:
                 # General Fashion Theme
                 type_line = ""
+                is_event = False
                 if char_type:
+                    if char_type.lower() in ["ee", "event"]:
+                        char_type = "event"
+                        is_event = True
                     match = re.search(r"\[(\W+)\]", name)
                     t_emoji = match.group(1) if match else "\U0001f4a0"
-                    type_line = f"\n{t_emoji}<b><i>{char_type}</i></b>{t_emoji}\n"
+                    if is_event:
+                        type_line = f"\n<b><i>{char_type}</i></b>{t_emoji}\n"
+                    else:
+                        type_line = f"\n{t_emoji}<b><i>{char_type}</i></b>{t_emoji}\n"
 
+                header = f"OwO! Check out this event character!{ownership_tag}" if is_event else f"OwO! Check out this character!{ownership_tag}"
                 caption = (
-                    f"OwO! Check out this character!{ownership_tag}\n\n"
+                    f"{header}\n\n"
                     f"<b>{escape_markdown(anime)}</b>\n"
                     f"{char_id}: <b>{escape_markdown(name)}</b>\n"
                     f"{stylized_rarity}\n"

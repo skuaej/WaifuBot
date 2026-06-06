@@ -98,7 +98,7 @@ async def gift_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"\u27a5 <b>From:</b> {sender_mention} (ID: <code>{sender.id}</code>)\n"
         f"\u27a5 <b>To:</b> {target_mention} (ID: <code>{target_user.id}</code>)\n"
         f"\u27a5 <b>Character:</b> {escape_markdown(char_data['name'])} (ID: <code>{char_id}</code>)\n\n"
-        f"\ud83d\udc49 {sender_mention}, click <b>CONFIRM GIFT</b> below to send it!",
+        f"\U0001F449 {sender_mention}, click <b>CONFIRM GIFT</b> below to send it!",
         parse_mode="HTML",
         reply_markup=reply_markup
     )
@@ -276,7 +276,7 @@ async def trade_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"🔄 <b>Tʀᴀᴅᴇ Pʀᴏᴘᴏsᴀʟ!</b>\n\n"
         f"<b>{sender_mention}</b> offers: <b>{escape_markdown(offer_char['name'])}</b>\n"
         f"For <b>{target_mention}</b>'s: <b>{escape_markdown(request_char['name'])}</b>\n\n"
-        f"\ud83d\udc49 {target_mention}, do you accept this trade?",
+        f"\U0001F449 {target_mention}, do you accept this trade?",
         parse_mode="HTML",
         reply_markup=reply_markup
     )

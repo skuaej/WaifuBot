@@ -545,15 +545,23 @@ async def check_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Handle Type (optional)
     char_type = char.get('type')
     type_line = ""
+    is_event = False
     if char_type:
+        if char_type.lower() in ["ee", "event"]:
+            char_type = "event"
+            is_event = True
         match = re.search(r"\[(\W+)\]", char['name'])
         t_emoji = match.group(1) if match else "\U0001f4a0"
-        type_line = f"\n{t_emoji}<b><i>{char_type}</i></b>{t_emoji}\n"
+        if is_event:
+            type_line = f"\n<b><i>{char_type}</i></b>{t_emoji}\n"
+        else:
+            type_line = f"\n{t_emoji}<b><i>{char_type}</i></b>{t_emoji}\n"
 
     # BUILD MESSAGE
     globe_emoji = "\U0001f310" # 🌐
+    header = "OwO! Check out this event character!" if is_event else "OwO! Check out this character!"
     text = (
-        f"OwO! Check out this character!\n\n"
+        f"{header}\n\n"
         f"<b>{escape_markdown(char['anime'])}</b>\n"
         f"{char['id']}: {escape_markdown(char['name'])}\n"
         f"{stylized_rarity}\n"
@@ -621,11 +629,14 @@ async def hclaim_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 raise Exception("Not a member")
         except Exception:
             from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-            keyboard = [[InlineKeyboardButton("\ud83d\ude80 JOIN SUPPORT CHAT", url=SUPPORT_CHAT_LINK)]]
+            chat_link = SUPPORT_CHAT_LINK
+            if "://" in chat_link:
+                chat_link = "https://" + chat_link.split("://", 1)[1]
+            keyboard = [[InlineKeyboardButton("\U0001F680 JOIN SUPPORT CHAT", url=chat_link)]]
             reply_markup = InlineKeyboardMarkup(keyboard)
             await update.message.reply_text(
                 f"\u274c <b>You must join our Support Group to use this command!</b>\n\n"
-                f"\ud83d\udc49 Click the button below to join, then try again.",
+                f"\U0001F449 Click the button below to join, then try again.",
                 parse_mode="HTML",
                 reply_markup=reply_markup
             )
@@ -702,6 +713,111 @@ async def hclaim_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Log character issue
         from bot.modules.admin import send_log
         await send_log(context, f"\u26a0\ufe0f <b>Hclaim Media Error</b>\nChar: {char['name']} (ID: {char_id})\nError: <code>{e}</code>")
+
+async def daily_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """/daily - Claim a random character from Common/Uncommon/Rare/Legendary."""
+    import time
+    user = update.effective_user
+    chat_id = update.effective_chat.id
+
+    # Support Chat Join Check
+    if SUPPORT_CHAT_ID:
+        try:
+            member = await context.bot.get_chat_member(SUPPORT_CHAT_ID, user.id)
+            if member.status not in ["member", "administrator", "creator"]:
+                raise Exception("Not a member")
+        except Exception:
+            from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+            chat_link = SUPPORT_CHAT_LINK
+            if "://" in chat_link:
+                chat_link = "https://" + chat_link.split("://", 1)[1]
+            keyboard = [[InlineKeyboardButton("\U0001F680 JOIN SUPPORT CHAT", url=chat_link)]]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            await update.message.reply_text(
+                f"\u274c <b>You must join our Support Group to use this command!</b>\n\n"
+                f"\U0001F449 Click the button below to join, then try again.",
+                parse_mode="HTML",
+                reply_markup=reply_markup
+            )
+            return
+
+    user_data = await users_collection.find_one({"id": user.id})
+    if user_data:
+        last_daily = user_data.get("last_daily", 0)
+        now = time.time()
+        if now - last_daily < 86400:
+            remaining = int(86400 - (now - last_daily))
+            hours, remainder = divmod(remaining, 3600)
+            minutes, _ = divmod(remainder, 60)
+            await update.message.reply_text(
+                f"\u23f3 <b>You already claimed your daily card!</b>\nCome back in {hours}h {minutes}m.", 
+                parse_mode="HTML"
+            )
+            return
+
+    # Pick a random character from claimable rarities: Common, Uncommon, Rare, Legendary
+    claimable_rarities = ["Common", "Uncommon", "Rare", "Legendary"]
+    pipeline = [
+        {"$match": {"rarity": {"$in": claimable_rarities}}},
+        {"$sample": {"size": 1}}
+    ]
+    results = await characters_collection.aggregate(pipeline).to_list(length=1)
+
+    if not results:
+        await update.message.reply_text("\u274c No claimable characters found in the database.")
+        return
+
+    char = results[0]
+    char_id = char['id']
+    normalized_id = str(int(char_id)) if char_id.isdigit() else char_id
+
+    # Add to user's harem
+    await users_collection.update_one(
+        {"id": user.id},
+        {
+            "$set": {"name": user.first_name, "username": user.username, "last_daily": time.time()},
+            "$push": {"waifus": normalized_id}
+        },
+        upsert=True
+    )
+
+    await captures_collection.insert_one({
+        "user_id": user.id,
+        "chat_id": chat_id,
+        "char_id": normalized_id,
+        "timestamp": update.message.date
+    })
+
+    emoji_map = {
+        "Common": "\U0001f535", "Uncommon": "\U0001f7e3", "Rare": "\U0001f7e0",
+        "Legendary": "\U0001f7e1", "Mystical": "\U0001f4ae", "Divine": "\u269c\ufe0f",
+        "Crossverse": "\u26a1", "Supreme": "\U0001fa9e", "Cataphract": "\u2728"
+    }
+    r_emoji = emoji_map.get(char.get('rarity', 'Common'), '\U0001f4ae')
+
+    text = (
+        f"\U0001f381 <b>Daily Card Claim!</b>\n\n"
+        f"<a href='tg://user?id={user.id}'>{escape_markdown(user.first_name)}</a> claimed:\n\n"
+        f"\U0001f3f7\ufe0f <b>{escape_markdown(char['name'])}</b>\n"
+        f"\U0001fae7 Anime: {escape_markdown(char.get('anime', 'Unknown'))}\n"
+        f"{r_emoji} Rarity: {char.get('rarity', 'Common')}\n"
+        f"\U0001f194 ID: {char_id}"
+    )
+
+    file_type = char.get('file_type', 'photo')
+    try:
+        if file_type == 'video':
+            await update.message.reply_video(video=char['file_id'], caption=text, parse_mode="HTML")
+        elif file_type == 'document':
+            await update.message.reply_document(document=char['file_id'], caption=text, parse_mode="HTML")
+        else:
+            await update.message.reply_photo(photo=char['file_id'], caption=text, parse_mode="HTML")
+    except Exception as e:
+        print(f"DAILY MEDIA ERROR: {e}")
+        await update.message.reply_text(text + f"\n\n\u26a0\ufe0f <i>Media failed to load (Possible invalid ID)</i>", parse_mode="HTML")
+        # Log character issue
+        from bot.modules.admin import send_log
+        await send_log(context, f"\u26a0\ufe0f <b>Daily Media Error</b>\nChar: {char['name']} (ID: {char_id})\nError: <code>{e}</code>")
 
 async def todaygtop_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """GLOBAL TOP 10 USERS WITH MOST CHARACTERS CAUGHT TODAY."""

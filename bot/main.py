@@ -29,7 +29,7 @@ from bot.modules.spawn import group_message_handler
 from bot.modules.capture import capture_cmd
 from bot.modules.collection import (
     harem_cmd, profile_cmd, top_cmd, fav_cmd, 
-    check_cmd, hmode_cmd, collection_callback_handler, hclaim_cmd, fav_callback_handler,
+    check_cmd, hmode_cmd, collection_callback_handler, hclaim_cmd, daily_cmd, fav_callback_handler,
     topgroups_cmd, gtop_cmd, todaygtop_cmd, hdelete_cmd
 )
 from bot.modules.trade import trade_cmd, gift_cmd, accept_cmd, reset_cmd, gift_callback_handler, trade_callback_handler
@@ -44,7 +44,7 @@ from bot.web import start_server
 BOT_COMMANDS = {
     "start", "help", "enable", "grab", "guess", "catch", "hug",
     "harem", "profile", "top", "gtop", "todaygtop", "topgroups", "fav", "hmode", "check",
-    "trade", "accept", "reset", "gift", "balance", "bonus", "transfer", "smash", "cancel",
+    "trade", "accept", "reset", "gift", "daily", "balance", "bonus", "transfer", "smash", "cancel",
     "upload", "delete", "broadcast", "changetime", "timepower", "spwanglobal", "addsudo", "sudo", "resudo",
     "stats", "total", "ping", "pin", "pinf", "cgrant", "sudolist", "transfercheck", "bang", "unbang", "update",
     "hclaim", "claim", "search", "hdelete"
@@ -186,7 +186,7 @@ def main():
     async def post_init(app):
         await init_db()
         try:
-            await app.bot.send_message(chat_id=LOG_CHAT_ID, text="\ud83d\ude80 <b>Bot has started successfully!</b>", parse_mode="HTML")
+            await app.bot.send_message(chat_id=LOG_CHAT_ID, text="\U0001F680 <b>Bot has started successfully!</b>", parse_mode="HTML")
         except Exception as e:
             print(f"FAILED TO SEND START LOG: {e}")
 
@@ -255,6 +255,7 @@ def main():
     
     # Harem Claim
     application.add_handler(CommandHandler(["hclaim", "claim"], hclaim_cmd))
+    application.add_handler(CommandHandler("daily", daily_cmd))
     
     # Channel Post Handler for Auto-Uploads
     application.add_handler(MessageHandler(filters.ChatType.CHANNEL, channel_post_handler))

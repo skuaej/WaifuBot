@@ -874,7 +874,7 @@ async def spwanglobal_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     
     status = "ENABLED" if enabled else "DISABLED"
-    await update.message.reply_text(f"\ud83d\ude80 Global spawning has been {status} across all groups.")
+    await update.message.reply_text(f"\U0001F680 Global spawning has been {status} across all groups.")
     await send_log(context, f"⚙️ <b>Global Spawn Toggle</b>\nBy: {update.effective_user.first_name}\nSpawning: {status}")
 
 
