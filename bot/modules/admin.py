@@ -26,6 +26,8 @@ def clean_character_name(name: str) -> str:
     # Remove decorative prefixes (symbols, "V ", etc.)
     name = re.sub(r"^[^\w\s]+\s*", "", name)
     name = re.sub(r"^V\s+", "", name, flags=re.IGNORECASE)
+    # Remove trailing counts like (x1), (x2), x1, x2
+    name = re.sub(r"\s*\(?x\d+\)?\s*$", "", name, flags=re.IGNORECASE)
     return name.strip()
 
 async def get_next_char_id():
@@ -287,14 +289,14 @@ async def forward_save_handler(update: Update, context: ContextTypes.DEFAULT_TYP
     print(f"[AUTO-SAVE] Caption: {caption[:80]}...")
 
     # Parse caption
-    anime_match = re.search(r"(?:\U0001fae7 Anime:|Anime:|➤ From:)\s*(.+)", caption, re.IGNORECASE)
-    name_match = re.search(r"(?:🏖️ Character Name:|Character Name:|Name:)\s*(.+?)(?:\s*\[.+\])?(?:\n|$)", caption, re.IGNORECASE)
+    anime_match = re.search(r"(?:\U0001fae7 Anime:|Anime:|➤ From:|From:|Series:|Source:|Show:)\s*(.+)", caption, re.IGNORECASE)
+    name_match = re.search(r"(?:🏖️ Character Name:|Character Name:|Character:|Name:|Waifu Name:)\s*(.+?)(?:\s*\[.+\])?(?:\n|$)", caption, re.IGNORECASE)
 
     if not name_match or not anime_match:
         print(f"[AUTO-SAVE] Skipped - caption parsing failed. Name: {bool(name_match)}, Anime: {bool(anime_match)}")
         return  # Silently skip if caption doesn't match character format
 
-    name = name_match.group(1).strip()
+    name = clean_character_name(name_match.group(1))
     anime = anime_match.group(1).split('\n')[0].split('|')[0].strip()
 
     rarity_match = re.search(r"𝙍𝘼𝙍𝙄𝙏𝙔:\s*(\w+)", caption, re.IGNORECASE)
@@ -406,8 +408,8 @@ async def channel_post_handler(update: Update, context: ContextTypes.DEFAULT_TYP
         return
 
     # Parse caption
-    anime_match = re.search(r"(?:\U0001fae7 Anime:|Anime:|➤ From:)\s*(.+)", caption, re.IGNORECASE)
-    name_match = re.search(r"(?:🏖️ Character Name:|Character Name:|Name:)\s*(.+?)(?:\s*\[.+\])?(?:\n|$)", caption, re.IGNORECASE)
+    anime_match = re.search(r"(?:\U0001fae7 Anime:|Anime:|➤ From:|From:|Series:|Source:|Show:)\s*(.+)", caption, re.IGNORECASE)
+    name_match = re.search(r"(?:🏖️ Character Name:|Character Name:|Character:|Name:|Waifu Name:)\s*(.+?)(?:\s*\[.+\])?(?:\n|$)", caption, re.IGNORECASE)
     
     if name_match and anime_match:
         name = clean_character_name(name_match.group(1))
@@ -495,8 +497,8 @@ async def upload_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
              await message.reply_text("Original message has no caption. Please provide manual arguments.")
              return
              
-        anime_match = re.search(r"(?:\U0001fae7 Anime:|Anime:|➤ From:)\s*(.+)", caption, re.IGNORECASE)
-        name_match = re.search(r"(?:🏖️ Character Name:|Character Name:|Name:)\s*(.+?)(?:\s*\[.+\])?(?:\n|$)", caption, re.IGNORECASE)
+        anime_match = re.search(r"(?:\U0001fae7 Anime:|Anime:|➤ From:|From:|Series:|Source:|Show:)\s*(.+)", caption, re.IGNORECASE)
+        name_match = re.search(r"(?:🏖️ Character Name:|Character Name:|Character:|Name:|Waifu Name:)\s*(.+?)(?:\s*\[.+\])?(?:\n|$)", caption, re.IGNORECASE)
         
         if not name_match or not anime_match:
              await message.reply_text("Could not parse Name or Anime from the caption. Please use the manual format: /upload Name, Anime, Rarity, [Type]")
